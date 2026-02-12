@@ -1,4 +1,4 @@
-# **FEZrs**
+# **FEZrs**    
 
 [![DOI](https://zenodo.org/badge/710286874.svg)](https://doi.org/10.5281/zenodo.14938038) ![Downloads](https://static.pepy.tech/badge/FEZrs) ![PyPI](https://img.shields.io/pypi/v/FEZrs?color=blue&label=PyPI&logo=pypi) [![Conda Version](https://img.shields.io/conda/vn/FEZtool/fezrs?label=Anaconda&color=orange&logo=anaconda)](https://anaconda.org/FEZtool/fezrs) ![License](https://img.shields.io/pypi/l/FEZrs) [![PyPI Downloads](https://static.pepy.tech/badge/fezrs)](https://pepy.tech/projects/fezrs) ![GitHub last commit](https://img.shields.io/github/last-commit/FEZtool-team/fezrs) [![Platform](https://img.shields.io/conda/pn/feztool/fezrs?color=blue&label=Platform&style=flat)](https://anaconda.org/feztool/fezrs) ![GitHub stars](https://img.shields.io/github/stars/FEZtool-team/FEZrs?style=social)
 
@@ -101,4 +101,5 @@ Special thanks to [**Chakad Cafe**](https://www.chakadcoffee.com/) for the coffe
 ## **License**
 
 This project is licensed under the [**Apache-2.0 license**.](https://github.com/FEZtool-team/FEZrs/edit/main/LICENSE)
+
 
