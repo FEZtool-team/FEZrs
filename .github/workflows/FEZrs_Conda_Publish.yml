@@ -1,6 +1,7 @@
 name: Conda Publish
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: ["PyPI Publish"]
     types:
