@@ -37,7 +37,7 @@ jobs:
 
       - name: Automatically bump version
         run: |
-          bumpversion patch  # Or use 'minor' or 'major' based on your preference
+          bumpversion major  # Or use 'minor' or 'major' based on your preference
 
       - name: Commit & Push the New Version
         env:
