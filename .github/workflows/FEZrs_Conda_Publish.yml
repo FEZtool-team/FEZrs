@@ -28,6 +28,13 @@ jobs:
         run: |
           mamba install -y conda-build anaconda-client
 
+      - name: Configure conda channels
+        shell: bash -l {0}
+        run: |
+          conda config --add channels conda-forge
+          conda config --add channels defaults
+          conda config --set channel_priority strict
+
       - name: Extract version from .bumpversion.cfg
         shell: bash -l {0}
         run: |
@@ -60,7 +67,7 @@ jobs:
           FEZRS_VERSION: ${{ env.FEZRS_VERSION }}
           SHA256_HASH: ${{ env.SHA256_HASH }}
         run: |
-          conda-build recip/
+          conda-build recip/ -c conda-forge -c defaults --override-channels
 
       - name: Upload to Anaconda Cloud
         shell: bash -l {0}
