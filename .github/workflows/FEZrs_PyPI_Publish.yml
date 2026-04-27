@@ -1,11 +1,17 @@
 name: PyPI Publish
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
-
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 jobs:
   pypi_publish:
     runs-on: ubuntu-22.04
