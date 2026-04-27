@@ -41,9 +41,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions@users.noreply.github.com"
 
-      - name: Automatically bump version
+      - name: Bump version
         run: |
-          bumpversion patch  # Or use 'minor' or 'major' based on your preference
+          bumpversion ${{ inputs.version_bump }}
 
       - name: Commit & Push the New Version
         env:
