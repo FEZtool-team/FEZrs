@@ -1,0 +1,66 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in FEZrs
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve FEZrs!
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Describe the issue clearly.
+      placeholder: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps To Reproduce
+      description: How can we reproduce this issue?
+      placeholder: |
+        1. Import dataset
+        2. Run function
+        3. Observe error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      placeholder: What did you expect to happen?
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs / Traceback
+      render: shell
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: Ubuntu 24.04 / Windows 11 / macOS
+
+  - type: input
+    id: python
+    attributes:
+      label: Python Version
+      placeholder: Python 3.12
+
+  - type: input
+    id: version
+    attributes:
+      label: FEZrs Version
+      placeholder: v0.3.0
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add screenshots, sample files, or extra information.
