@@ -13,6 +13,11 @@
 ✅ Designed for remote sensing and satellite imagery analysis  
 ✅ Easy integration with FastAPI for web-based processing
 
+## Documentation
+
+Full documentation, API references, tutorials, and examples are available here:
+    https://feztool-team.github.io/FEZdocs/libraries/fezrs/
+
 ## **📦 Installation**
 
 You can install **FEZrs** using your preferred Python package manager:
