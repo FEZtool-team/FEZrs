@@ -16,7 +16,7 @@
 ## Documentation
 
 Full documentation, API references, tutorials, and examples are available here:
-    https://feztool-team.github.io/FEZdocs/libraries/fezrs/
+https://feztool-team.github.io/FEZdocs/libraries/fezrs/
 
 ## **📦 Installation**
 
