@@ -35,7 +35,7 @@ class IndicesCalculator(BaseTool):
         pass
 
     def process(self):
-        match (self.selectedTime):
+        match self.selectedTime:
             case "after":
                 self._output = self._output = (
                     self.time_bands["nir"]["image_skimage"]
@@ -92,22 +92,3 @@ class IndicesCalculator(BaseTool):
             nrows,
             ncols,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/Change Detection/After/B4.tif"
-    swir1_path = Path.cwd() / "data/Change Detection/After/B5.tif"
-    swir2_path = Path.cwd() / "data/Change Detection/After/B7.tif"
-
-    before_nir_path = Path.cwd() / "data/Change Detection/Before/B4.tif"
-    before_swir1_path = Path.cwd() / "data/Change Detection/Before/B5.tif"
-    before_swir2_path = Path.cwd() / "data/Change Detection/Before/B7.tif"
-
-    calculator = IndicesCalculator(
-        nir_path=nir_path,
-        swir2_path=swir2_path,
-        before_nir_path=before_nir_path,
-        before_swir2_path=before_swir2_path,
-        time="after",
-    ).execute("./", title="Test CD time")
