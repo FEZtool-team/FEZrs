@@ -2,6 +2,7 @@ numpy
 Pillow
 pandas
 pydantic
+rasterio
 matplotlib
 imagecodecs
 scikit-learn
