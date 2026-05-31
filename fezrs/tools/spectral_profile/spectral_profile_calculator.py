@@ -1,7 +1,5 @@
 # Import packages and libraries
 import numpy as np
-from uuid import uuid4
-from pathlib import Path
 from skimage import exposure
 import matplotlib.pyplot as plt
 
@@ -13,7 +11,6 @@ from fezrs.utils.histogram_handler import HistogramExportMixin
 
 
 class SpectralProfileCalculator(BaseTool, HistogramExportMixin):
-
     def __init__(
         self,
         red_path: BandPathType,
@@ -124,22 +121,3 @@ class SpectralProfileCalculator(BaseTool, HistogramExportMixin):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    red_path = Path.cwd() / "data/Red.tif"
-    green_path = Path.cwd() / "data/Green.tif"
-    blue_path = Path.cwd() / "data/Blue.tif"
-    nir_path = Path.cwd() / "data/NIR.tif"
-    swir1_path = Path.cwd() / "data/SWIR1.tif"
-    swir2_path = Path.cwd() / "data/SWIR2.tif"
-
-    calculator = SpectralProfileCalculator(
-        red_path=red_path,
-        green_path=green_path,
-        blue_path=blue_path,
-        nir_path=nir_path,
-        swir1_path=swir1_path,
-        swir2_path=swir2_path,
-    ).execute("./")
