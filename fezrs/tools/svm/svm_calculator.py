@@ -5,8 +5,6 @@ import pandas as pd
 
 from skimage import io
 from sklearn import svm
-from pathlib import Path
-
 from fezrs.base import BaseTool
 from fezrs.utils.type_handler import BandPathType
 
@@ -205,24 +203,3 @@ class SVMCalculator(BaseTool):
             nrows,
             ncols,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    red_path = Path.cwd() / "data/Red.tif"
-    green_path = Path.cwd() / "data/Green.tif"
-    blue_path = Path.cwd() / "data/Blue.tif"
-    nir_path = Path.cwd() / "data/NIR.tif"
-    swir1_path = Path.cwd() / "data/SWIR1.tif"
-    swir2_path = Path.cwd() / "data/SWIR2.tif"
-
-    calculator = SVMCalculator(
-        red_path=red_path,
-        green_path=green_path,
-        blue_path=blue_path,
-        nir_path=nir_path,
-        swir1_path=swir1_path,
-        swir2_path=swir2_path,
-        class_number=4,
-        sample_number=10,
-    ).execute("./")
