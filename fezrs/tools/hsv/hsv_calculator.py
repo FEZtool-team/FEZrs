@@ -1,6 +1,5 @@
 # Import packages and libraries
 import numpy as np
-from pathlib import Path
 from typing import Literal
 from skimage.color import rgb2hsv
 
@@ -86,14 +85,3 @@ class HSVCalculator(BaseTool):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/NIR.tif"
-    blue_path = Path.cwd() / "data/Blue.tif"
-    green_path = Path.cwd() / "data/Green.tif"
-
-    calculator = HSVCalculator(
-        blue_path=blue_path, green_path=green_path, nir_path=nir_path, channel="hsv"
-    ).execute(output_path="./", title="HSV output")
