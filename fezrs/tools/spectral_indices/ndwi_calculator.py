@@ -1,5 +1,4 @@
 # Import packages and libraries
-from pathlib import Path
 from matplotlib.pyplot import cm
 
 # Import module and files
@@ -53,13 +52,3 @@ class NDWICalculator(BaseTool):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/NIR.tif"
-    green_path = Path.cwd() / "data/Green.tif"
-
-    calculator = NDWICalculator(nir_path=nir_path, green_path=green_path).execute(
-        output_path="./", title="NDWI output"
-    )

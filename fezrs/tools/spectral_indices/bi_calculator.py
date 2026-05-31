@@ -1,6 +1,3 @@
-# Import packages and libraries
-from pathlib import Path
-
 # Import module and files
 from fezrs.base import BaseTool
 from fezrs.utils.type_handler import BandPathType
@@ -27,6 +24,7 @@ class BICalculator(BaseTool):
             self.normalized_bands[band] for band in ("nir", "red", "green")
         )
 
+        # NOTE - This line had a division by zero warning
         self._output = ((nir - green) - red) / ((nir + green) + red)
         return self._output
 
@@ -55,14 +53,3 @@ class BICalculator(BaseTool):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/NIR.tif"
-    red_path = Path.cwd() / "data/Red.tif"
-    green_path = Path.cwd() / "data/Green.tif"
-
-    calculator = BICalculator(
-        nir_path=nir_path, green_path=green_path, red_path=red_path
-    ).execute(output_path="./", title="BI output")

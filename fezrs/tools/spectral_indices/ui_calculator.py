@@ -1,5 +1,4 @@
 # Import packages and libraries
-from pathlib import Path
 from matplotlib.pyplot import cm
 
 # Import module and files
@@ -53,13 +52,3 @@ class UICalculator(BaseTool):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/NIR.tif"
-    swir2_path = Path.cwd() / "data/SWIR2.tif"
-
-    calculator = UICalculator(nir_path=nir_path, swir2_path=swir2_path).execute(
-        output_path="./", title="UI output"
-    )

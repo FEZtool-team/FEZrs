@@ -1,5 +1,4 @@
 # Import packages and libraries
-from pathlib import Path
 
 # Import module and files
 from fezrs.base import BaseTool
@@ -48,13 +47,3 @@ class AFVICalculator(BaseTool):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/NIR.tif"
-    swir1_path = Path.cwd() / "data/SWIR1.tif"
-
-    calculator = AFVICalculator(nir_path=nir_path, swir1_path=swir1_path).execute(
-        output_path="./", title="AFVI output"
-    )
