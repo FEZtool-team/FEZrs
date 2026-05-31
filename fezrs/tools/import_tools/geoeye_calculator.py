@@ -1,12 +1,8 @@
-import numpy as np
-from pathlib import Path
-
 from fezrs.base import BaseTool
 from fezrs.utils.type_handler import BandPathType
 
 
 class Geoeye_Calculator(BaseTool):
-
     def __init__(self, tif_path: BandPathType, level: int = 0):
         super().__init__(
             tif_path=tif_path,
@@ -59,12 +55,3 @@ class Geoeye_Calculator(BaseTool):
             nrows,
             ncols,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    tif_path = Path.cwd() / "data/Geoeye/geoeye.tif"
-
-    calculator = Geoeye_Calculator(tif_path=tif_path, level=3).execute(
-        "./", title="GeoEye"
-    )
