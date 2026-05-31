@@ -1,6 +1,4 @@
 # Import packages and libraries
-from uuid import uuid4
-from pathlib import Path
 import matplotlib.pyplot as plt
 from skimage import img_as_float
 
@@ -81,11 +79,3 @@ class FloatCalculator(BaseTool, HistogramExportMixin):
             nrows,
             ncols,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/NIR.tif"
-
-    calculator = FloatCalculator(nir_path=nir_path).execute("./", title="Float IE")
-    calculator = FloatCalculator(nir_path=nir_path).histogram_export("./")

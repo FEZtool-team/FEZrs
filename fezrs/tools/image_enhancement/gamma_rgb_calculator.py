@@ -1,7 +1,5 @@
 # Import packages and libraries
 import numpy as np
-from uuid import uuid4
-from pathlib import Path
 from skimage import exposure
 import matplotlib.pyplot as plt
 
@@ -110,14 +108,3 @@ class GammaRGBCalculator(BaseTool, HistogramExportMixin):
             nrows,
             ncols,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    red_path = Path.cwd() / "data/Red.tif"
-    green_path = Path.cwd() / "data/Green.tif"
-    blue_path = Path.cwd() / "data/Blue.tif"
-
-    calculator = GammaRGBCalculator(
-        red_path=red_path, green_path=green_path, blue_path=blue_path
-    ).histogram_export("./", title="Gamma-RGB IE")
