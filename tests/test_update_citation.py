@@ -58,3 +58,7 @@ def test_validate_authors_rejects_setup_mismatch():
 
     with pytest.raises(ValueError, match="citation authors do not match"):
         update_citation.validate_authors(citation_authors, "Another Author")
+
+
+def test_script_uses_python310_compatible_utc_timezone():
+    assert "dt.UTC" not in SCRIPT_PATH.read_text(encoding="utf-8")
