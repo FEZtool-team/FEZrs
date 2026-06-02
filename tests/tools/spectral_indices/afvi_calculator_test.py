@@ -1,6 +1,8 @@
+import warnings
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
 
 from fezrs.tools.spectral_indices.afvi_calculator import AFVICalculator
 
@@ -62,13 +64,18 @@ def test_process_calculates_afvi_correctly(mock_afvi_calculator):
 def test_process_handles_zero_division(mock_afvi_calculator):
     mock_afvi_calculator.normalized_bands = {
         "nir": np.zeros((100, 100)),
-        "swir1": np.ones((100, 100)),
+        "swir1": np.zeros((100, 100)),
     }
 
-    result = mock_afvi_calculator.process()
+    with warnings.catch_warnings(record=True) as captured_warnings:
+        warnings.simplefilter("always")
+        result = mock_afvi_calculator.process()
 
     assert result is not None
     assert not np.any(np.isinf(result))
+    assert not any(
+        issubclass(record.category, RuntimeWarning) for record in captured_warnings
+    )
 
 
 def test_process_returns_correct_shape(mock_afvi_calculator):

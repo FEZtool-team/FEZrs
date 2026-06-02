@@ -1,6 +1,8 @@
+import warnings
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
 
 from fezrs.tools.spectral_indices.savi_calculator import SAVICalculator
 
@@ -61,13 +63,18 @@ def test_process_calculates_savi_correctly(mock_savi_calculator):
 
 def test_process_handles_division_by_zero(mock_savi_calculator):
     mock_savi_calculator.normalized_bands = {
-        "nir": np.zeros((100, 100)),
-        "red": np.zeros((100, 100)),
+        "nir": np.full((100, 100), -0.25),
+        "red": np.full((100, 100), -0.25),
     }
 
-    result = mock_savi_calculator.process()
+    with warnings.catch_warnings(record=True) as captured_warnings:
+        warnings.simplefilter("always")
+        result = mock_savi_calculator.process()
 
     assert result is not None
+    assert not any(
+        issubclass(record.category, RuntimeWarning) for record in captured_warnings
+    )
 
 
 def test_process_returns_correct_shape(mock_savi_calculator):

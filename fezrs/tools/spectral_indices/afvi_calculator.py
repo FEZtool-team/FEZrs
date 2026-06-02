@@ -2,6 +2,7 @@
 
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.tools.spectral_indices._division import divide_with_nan
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -19,7 +20,10 @@ class AFVICalculator(BaseTool):
     def process(self):
         nir, swir1 = (self.normalized_bands[band] for band in ("nir", "swir1"))
 
-        self._output = (nir - 0.66) * (swir1 / (nir + (0.66 * swir1)))
+        self._output = (nir - 0.66) * divide_with_nan(
+            swir1,
+            nir + (0.66 * swir1),
+        )
         return self._output
 
     def execute(

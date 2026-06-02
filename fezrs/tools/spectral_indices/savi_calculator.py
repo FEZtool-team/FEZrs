@@ -1,5 +1,6 @@
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.tools.spectral_indices._division import divide_with_nan
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -21,7 +22,7 @@ class SAVICalculator(BaseTool):
     def process(self):
         nir, red = (self.normalized_bands[band] for band in ("nir", "red"))
 
-        self._output = ((nir - red) / (nir + red + 0.5)) * 1.5
+        self._output = divide_with_nan(nir - red, nir + red + 0.5) * 1.5
         return self._output
 
     def execute(

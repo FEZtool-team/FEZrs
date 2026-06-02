@@ -1,5 +1,6 @@
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.tools.spectral_indices._division import divide_with_nan
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -24,8 +25,10 @@ class BICalculator(BaseTool):
             self.normalized_bands[band] for band in ("nir", "red", "green")
         )
 
-        # NOTE - This line had a division by zero warning
-        self._output = ((nir - green) - red) / ((nir + green) + red)
+        self._output = divide_with_nan(
+            (nir - green) - red,
+            (nir + green) + red,
+        )
         return self._output
 
     def execute(

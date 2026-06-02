@@ -3,6 +3,7 @@ from matplotlib.pyplot import cm
 
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.tools.spectral_indices._division import divide_with_nan
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -24,7 +25,7 @@ class NDWICalculator(BaseTool):
     def process(self):
         nir, green = (self.normalized_bands[band] for band in ("nir", "green"))
 
-        self._output = (green - nir) / (nir + green)
+        self._output = divide_with_nan(green - nir, nir + green)
         return self._output
 
     def execute(
