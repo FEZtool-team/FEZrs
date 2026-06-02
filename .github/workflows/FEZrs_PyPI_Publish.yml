@@ -1,11 +1,17 @@
 name: PyPI Publish
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
-
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 jobs:
   pypi_publish:
     runs-on: ubuntu-22.04
@@ -35,9 +41,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions@users.noreply.github.com"
 
-      - name: Automatically bump version
+      - name: Bump version
         run: |
-          bumpversion patch  # Or use 'minor' or 'major' based on your preference
+          bumpversion ${{ inputs.version_bump }}
 
       - name: Commit & Push the New Version
         env:
