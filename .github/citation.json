@@ -1,0 +1,26 @@
+{
+  "title": "FEZrs",
+  "message": "If you use this library, please cite it as below.",
+  "authors": [
+    {
+      "given-names": "Mahdi",
+      "family-names": "Farmahinifarahani"
+    },
+    {
+      "given-names": "Hooman",
+      "family-names": "Mirzaee"
+    },
+    {
+      "given-names": "Mahdi",
+      "family-names": "Nedaee"
+    },
+    {
+      "given-names": "Mohammad Hossein",
+      "family-names": "Kiani Fayz Abadi"
+    },
+    {
+      "given-names": "Parsa",
+      "family-names": "Elmi"
+    }
+  ]
+}

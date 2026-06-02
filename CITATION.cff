@@ -1,21 +1,17 @@
 cff-version: 1.2.0
 message: "If you use this library, please cite it as below."
 authors:
-  - family-names: Farmahinifarahani
-    given-names: Mahdi
-  - family-names: Mirzaee
-    given-names: Hooman
-  - family-names: Nedaee
-    given-names: Mahdi
-  - family-names: Kiani Fayz Abadi
-    given-names: Mohammad Hossein
-  - family-names: Kiani Fayz Abadi
-    given-names: Yoones
-  - family-names: Karimzadehasl
-    given-names: Erfan
-  - family-names: Elmi
-    given-names: Parsa
+  - family-names: "Farmahinifarahani"
+    given-names: "Mahdi"
+  - family-names: "Mirzaee"
+    given-names: "Hooman"
+  - family-names: "Nedaee"
+    given-names: "Mahdi"
+  - family-names: "Kiani Fayz Abadi"
+    given-names: "Mohammad Hossein"
+  - family-names: "Elmi"
+    given-names: "Parsa"
 
-title: "FEZrs: Version 0.2.12"
-version: "0.2.12"
-date-released: "2025-03-01"
+title: "FEZrs: Version 0.4.117"
+version: "0.4.117"
+date-released: "2026-06-02"
