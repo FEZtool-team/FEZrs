@@ -1,6 +1,5 @@
 # Import packages and libraries
 import numpy as np
-from pathlib import Path
 from cv2 import medianBlur
 
 # Import module and files
@@ -9,7 +8,6 @@ from fezrs.utils.type_handler import BandPathType
 
 
 class MedianCalculator(BaseTool):
-
     def __init__(self, tif_path: BandPathType, kernel_size: int):
         super().__init__(tif_path=tif_path)
 
@@ -86,9 +84,9 @@ class MedianCalculator(BaseTool):
 
 
 # NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    tif_path = Path.cwd() / "data/IMG.tif"
+# if __name__ == "__main__":
+#     tif_path = Path.cwd() / "data/IMG.tif"
 
-    calculator = MedianCalculator(tif_path=tif_path, kernel_size=5).execute(
-        output_path="./", title="Median output"
-    )
+#     calculator = MedianCalculator(tif_path=tif_path, kernel_size=5).execute(
+#         output_path="./", title="Median output"
+#     )

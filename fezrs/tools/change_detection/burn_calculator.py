@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from fezrs.base import BaseTool
 from fezrs.utils.type_handler import BandPathType
 
@@ -73,21 +71,3 @@ class BurnCalculator(BaseTool):
             nrows,
             ncols,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/Change Detection/After/B4.tif"
-    swir1_path = Path.cwd() / "data/Change Detection/After/B5.tif"
-    swir2_path = Path.cwd() / "data/Change Detection/After/B7.tif"
-
-    before_nir_path = Path.cwd() / "data/Change Detection/Before/B4.tif"
-    before_swir1_path = Path.cwd() / "data/Change Detection/Before/B5.tif"
-    before_swir2_path = Path.cwd() / "data/Change Detection/Before/B7.tif"
-
-    calculator = BurnCalculator(
-        nir_path=nir_path,
-        swir2_path=swir2_path,
-        before_nir_path=before_nir_path,
-        before_swir2_path=before_swir2_path,
-    ).execute("./", title="Burn CD time")

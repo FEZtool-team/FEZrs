@@ -1,6 +1,4 @@
 # Import packages and libraries
-from uuid import uuid4
-from pathlib import Path
 import matplotlib.pyplot as plt
 from skimage import exposure, img_as_float
 
@@ -11,7 +9,7 @@ from fezrs.utils.histogram_handler import HistogramExportMixin
 
 
 # Calculator class
-class LogAdjustCalculator(BaseTool):
+class LogAdjustCalculator(BaseTool, HistogramExportMixin):
     def __init__(
         self,
         nir_path: BandPathType,
@@ -98,14 +96,3 @@ class LogAdjustCalculator(BaseTool):
             nrows,
             ncols,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/NIR.tif"
-
-    calculator = (
-        LogAdjustCalculator(nir_path=nir_path, inverse=False, gain=1)
-        .histogram_export("./", title="LogAdjust IE")
-        .execute("./")
-    )

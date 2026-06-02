@@ -62,7 +62,7 @@ equalize.execute(output_path="./your/export/path")
 ## **Modules**
 
 - `KMeansCalculator`
-- `GuassianCalculator`
+- `GaussianCalculator`
 - `LaplacianCalculator`
 - `MeanCalculator`
 - `MedianCalculator`

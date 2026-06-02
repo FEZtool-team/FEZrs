@@ -1,9 +1,6 @@
-# Import packages and libraries
-from pathlib import Path
-from matplotlib.pyplot import cm
-
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.tools.spectral_indices._division import divide_with_nan
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -25,7 +22,7 @@ class SAVICalculator(BaseTool):
     def process(self):
         nir, red = (self.normalized_bands[band] for band in ("nir", "red"))
 
-        self._output = ((nir - red) / (nir + red + 0.5)) * 1.5
+        self._output = divide_with_nan(nir - red, nir + red + 0.5) * 1.5
         return self._output
 
     def execute(
@@ -53,13 +50,3 @@ class SAVICalculator(BaseTool):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/NIR.tif"
-    red_path = Path.cwd() / "data/Red.tif"
-
-    calculator = SAVICalculator(nir_path=nir_path, red_path=red_path).execute(
-        output_path="./", title="SAVI output"
-    )

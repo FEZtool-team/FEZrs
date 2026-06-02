@@ -98,7 +98,7 @@ class MagDirCalculator(BaseTool):
                 change_magnitude_result[i][j] = change_magnitude
                 change_direction_result[i][j] = change_direction
 
-        match (self.select):
+        match self.select:
             case "magnitude":
                 self._output = change_magnitude_result
 
@@ -139,22 +139,3 @@ class MagDirCalculator(BaseTool):
             nrows,
             ncols,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/Change Detection/After/B4.tif"
-    swir1_path = Path.cwd() / "data/Change Detection/After/B5.tif"
-
-    before_nir_path = Path.cwd() / "data/Change Detection/Before/B4.tif"
-    before_swir1_path = Path.cwd() / "data/Change Detection/Before/B5.tif"
-
-    calculator = MagDirCalculator(
-        nir_path=nir_path,
-        swir1_path=swir1_path,
-        before_nir_path=before_nir_path,
-        before_swir1_path=before_swir1_path,
-        selecte="magnitude",
-    ).execute(
-        "./", title="MagDir CD time", colormap=None, show_colorbar=True, show_axis=False
-    )

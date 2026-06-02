@@ -1,6 +1,5 @@
 # Import packages and libraries
 import numpy as np
-from pathlib import Path
 from sklearn.cluster import KMeans
 
 # Import module and files
@@ -119,12 +118,3 @@ class KMeansCalculator(BaseTool):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/NIR.tif"
-
-    calculator = KMeansCalculator(
-        nir_path=nir_path, n_clusters=4, random_state=0
-    ).execute(output_path="./", title="K-Means output")

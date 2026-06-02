@@ -1,6 +1,5 @@
 # Import packages and libraries
 import numpy as np
-from pathlib import Path
 from cv2 import Laplacian
 
 # Import module and files
@@ -9,7 +8,6 @@ from fezrs.utils.type_handler import BandPathType
 
 
 class LaplacianCalculator(BaseTool):
-
     def __init__(self, tif_path: BandPathType, kernel_size: int):
         super().__init__(tif_path=tif_path)
 
@@ -83,12 +81,3 @@ class LaplacianCalculator(BaseTool):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    tif_path = Path.cwd() / "data/IMG.tif"
-
-    calculator = LaplacianCalculator(tif_path=tif_path, kernel_size=7).execute(
-        output_path="./", title="Laplacian output"
-    )

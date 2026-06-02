@@ -1,6 +1,5 @@
 # Import packages and libraries
 import numpy as np
-from pathlib import Path
 from skimage.color import rgb2hsv
 from typing import Literal
 
@@ -85,14 +84,3 @@ class IRHSVCalculator(BaseTool):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    red_path = Path.cwd() / "data/Red.tif"
-    swir1_path = Path.cwd() / "data/SWIR1.tif"
-    swir2_path = Path.cwd() / "data/SWIR2.tif"
-
-    calculator = IRHSVCalculator(
-        red_path=red_path, swir1_path=swir1_path, swir2_path=swir2_path, channel="irhue"
-    ).execute(output_path="./", title="IRHSV output")

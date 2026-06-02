@@ -1,9 +1,9 @@
 # Import packages and libraries
-from pathlib import Path
 from matplotlib.pyplot import cm
 
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.tools.spectral_indices._division import divide_with_nan
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -25,7 +25,7 @@ class NDWICalculator(BaseTool):
     def process(self):
         nir, green = (self.normalized_bands[band] for band in ("nir", "green"))
 
-        self._output = (green - nir) / (nir + green)
+        self._output = divide_with_nan(green - nir, nir + green)
         return self._output
 
     def execute(
@@ -53,13 +53,3 @@ class NDWICalculator(BaseTool):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/NIR.tif"
-    green_path = Path.cwd() / "data/Green.tif"
-
-    calculator = NDWICalculator(nir_path=nir_path, green_path=green_path).execute(
-        output_path="./", title="NDWI output"
-    )

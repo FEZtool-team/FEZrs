@@ -73,12 +73,3 @@ class GLCMCalculator(BaseTool):
             nrows,
             ncols,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/NIR.tif"
-
-    calculator = GLCMCalculator(
-        nir_path=nir_path, window_size=3, propery="ASM"
-    ).execute(output_path="./", title="GLCM output")

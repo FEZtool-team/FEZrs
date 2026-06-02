@@ -1,7 +1,6 @@
 # Import packages and libraries
 import numpy as np
 from uuid import uuid4
-from pathlib import Path
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA as skpc
 
@@ -12,7 +11,6 @@ from fezrs.utils.histogram_handler import HistogramExportMixin
 
 
 class PCACalculator(BaseTool, HistogramExportMixin):
-
     def __init__(
         self,
         red_path: BandPathType,
@@ -186,25 +184,3 @@ class PCACalculator(BaseTool, HistogramExportMixin):
             nrows,
             ncols,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    red_path = Path.cwd() / "data/Red.tif"
-    green_path = Path.cwd() / "data/Green.tif"
-    blue_path = Path.cwd() / "data/Blue.tif"
-    nir_path = Path.cwd() / "data/NIR.tif"
-    swir1_path = Path.cwd() / "data/SWIR1.tif"
-    swir2_path = Path.cwd() / "data/SWIR2.tif"
-
-    calculator = PCACalculator(
-        red_path=red_path,
-        green_path=green_path,
-        blue_path=blue_path,
-        nir_path=nir_path,
-        swir1_path=swir1_path,
-        swir2_path=swir2_path,
-        selectBand="swir2",
-    ).histogram_export(
-        output_path="./",
-    )

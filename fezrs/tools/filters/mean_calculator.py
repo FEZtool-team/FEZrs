@@ -1,6 +1,5 @@
 # Import packages and libraries
 from cv2 import blur
-from pathlib import Path
 
 # Import module and files
 from fezrs.base import BaseTool
@@ -8,7 +7,6 @@ from fezrs.utils.type_handler import BandPathType
 
 
 class MeanCalculator(BaseTool):
-
     def __init__(self, tif_path: BandPathType):
         super().__init__(tif_path=tif_path)
 
@@ -52,12 +50,3 @@ class MeanCalculator(BaseTool):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    tif_path = Path.cwd() / "data/IMG.tif"
-
-    calculator = MeanCalculator(tif_path=tif_path).execute(
-        output_path="./", title="Mean output"
-    )

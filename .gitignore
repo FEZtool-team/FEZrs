@@ -9,6 +9,7 @@
 
 # Develop files
 *_output_*.png
+AGENTS.MD
 
 # Test files
 /tests/output

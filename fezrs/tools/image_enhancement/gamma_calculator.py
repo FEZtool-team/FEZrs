@@ -1,6 +1,4 @@
 # Import packages and libraries
-from uuid import uuid4
-from pathlib import Path
 import matplotlib.pyplot as plt
 from skimage import exposure, img_as_float
 
@@ -105,12 +103,3 @@ class GammaCalculator(BaseTool, HistogramExportMixin):
             nrows,
             ncols,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    nir_path = Path.cwd() / "data/NIR.tif"
-
-    calculator = GammaCalculator(nir_path=nir_path, gamma=0.2, gain=1).histogram_export(
-        "./", title="Gamma IE"
-    )

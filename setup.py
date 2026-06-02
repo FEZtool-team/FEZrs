@@ -26,7 +26,7 @@ setup(
         "scikit-image",
         "opencv-python",
     ],
-    author="Mahdi Farmahinifarahani, Hooman Mirzaee, Mahdi Nedaee, Mohammad Hossein Kiani Fayz Abadi, Yoones Kiani Feyz Abadi, Erfan Karimzadehasl, Parsa Elmi",
+    author="Mahdi Farmahinifarahani, Hooman Mirzaee, Mahdi Nedaee, Mohammad Hossein Kiani Fayz Abadi, Parsa Elmi",
     author_email="aradfarahani@aol.com",
     description="Feature Extraction and Zoning for Remote Sensing (FEZrs)",
     long_description=open("README.md").read(),

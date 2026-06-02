@@ -1,7 +1,6 @@
 # Import packages and libraries
 import numpy as np
 from cv2 import Sobel
-from pathlib import Path
 
 # Import module and files
 from fezrs.base import BaseTool
@@ -9,7 +8,6 @@ from fezrs.utils.type_handler import BandPathType
 
 
 class SobelCalculator(BaseTool):
-
     def __init__(self, tif_path: BandPathType, kernel_size: int):
         super().__init__(tif_path=tif_path)
 
@@ -87,12 +85,3 @@ class SobelCalculator(BaseTool):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-if __name__ == "__main__":
-    tif_path = Path.cwd() / "data/IMG.tif"
-
-    calculator = SobelCalculator(tif_path=tif_path, kernel_size=5).execute(
-        output_path="./", title="Sobel output"
-    )

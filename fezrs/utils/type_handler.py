@@ -75,7 +75,7 @@ PropertyGLCMType = Literal[
 BandNamePCAType = Literal["red", "nir", "blue", "swir1", "swir2", "green"]
 """Type alias for band names used in PCA."""
 
-Landset8ExportType = Literal[
+Landsat8ExportType = Literal[
     None,
     "rgb",
     "infrared",

@@ -1,6 +1,6 @@
 from fezrs.tools.clustering.kmeans_calculator import KMeansCalculator
 
-from fezrs.tools.filters.gaussian_calculator import GuassianCalculator
+from fezrs.tools.filters.gaussian_calculator import GaussianCalculator
 from fezrs.tools.filters.laplacian_calculator import LaplacianCalculator
 from fezrs.tools.filters.mean_calculator import MeanCalculator
 from fezrs.tools.filters.median_calculator import MedianCalculator
@@ -56,7 +56,7 @@ from fezrs.tools.change_detection.time_calculator import TimeCalculator
 
 __all__ = [
     "KMeansCalculator",
-    "GuassianCalculator",
+    "GaussianCalculator",
     "LaplacianCalculator",
     "MeanCalculator",
     "MedianCalculator",

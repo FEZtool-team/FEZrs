@@ -1,4 +1,3 @@
-import numpy as np
 from uuid import uuid4
 from typing import List
 from pathlib import Path
@@ -93,12 +92,3 @@ class MosaicCalculator(BaseTool):
             nrows,
             ncols,
         )
-
-
-if __name__ == "__main__":
-    tif_path_01 = Path.cwd() / "data/Mosaic/image01.tif"
-    tif_path_02 = Path.cwd() / "data/Mosaic/image02.tif"
-
-    calculator = MosaicCalculator(tif_paths=[tif_path_01, tif_path_02]).execute(
-        output_path="./"
-    )
