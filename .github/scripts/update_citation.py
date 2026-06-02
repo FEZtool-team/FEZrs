@@ -120,7 +120,7 @@ def main() -> int:
     citation_config = read_citation_config(args.config)
     validate_authors(citation_config["authors"], read_setup_author(args.setup))
 
-    release_date = args.date or dt.datetime.now(dt.UTC).date()
+    release_date = args.date or dt.datetime.now(dt.timezone.utc).date()
     content = render_citation(
         citation_config=citation_config,
         version=read_version(args.bumpversion),

@@ -1,4 +1,4 @@
-name: Update CITATION
+name: FEZrs Citation Update
 
 on:
   workflow_dispatch:
@@ -8,20 +8,17 @@ on:
         required: false
         type: boolean
         default: true
-  push:
-    branches:
-      - main
-    paths:
-      - ".bumpversion.cfg"
-      - ".github/citation.json"
-      - ".github/scripts/update_citation.py"
-      - "setup.py"
+  workflow_run:
+    workflows: ["PyPI Publish"]
+    types:
+      - completed
 
 permissions:
   contents: write
 
 jobs:
   update-citation:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-22.04
 
     steps:
