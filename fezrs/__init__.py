@@ -29,7 +29,7 @@ from fezrs.tools.image_enhancement.sigmoid_adjust_calculator import (
 
 from fezrs.tools.pca.pca_calculator import PCACalculator
 
-from fezrs.tools.spectral_indices.afvi_calculator import AFVICalculator
+from fezrs.tools.spectral_indices.afri_calculator import AFRICalculator
 from fezrs.tools.spectral_indices.bi_calculator import BICalculator
 from fezrs.tools.spectral_indices.ndvi_calculator import NDVICalculator
 from fezrs.tools.spectral_indices.ndwi_calculator import NDWICalculator
@@ -76,7 +76,7 @@ __all__ = [
     "OriginalRGBCalculator",
     "SigmoidAdjustCalculator",
     "PCACalculator",
-    "AFVICalculator",
+    "AFRICalculator",
     "BICalculator",
     "NDVICalculator",
     "NDWICalculator",

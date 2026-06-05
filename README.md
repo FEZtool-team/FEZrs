@@ -82,7 +82,7 @@ equalize.execute(output_path="./your/export/path")
 - `OriginalRGBCalculator`
 - `SigmoidAdjustCalculator`
 - `PCACalculator`
-- `AFVICalculator`
+- `AFRICalculator`
 - `BICalculator`
 - `NDVICalculator`
 - `NDWICalculator`
