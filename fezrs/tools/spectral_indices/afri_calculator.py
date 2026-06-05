@@ -7,7 +7,7 @@ from fezrs.utils.type_handler import BandPathType
 
 
 # Calculator class
-class AFVICalculator(BaseTool):
+class AFRICalculator(BaseTool):
     def __init__(self, nir_path: BandPathType, swir1_path: BandPathType):
         super().__init__(nir_path=nir_path, swir1_path=swir1_path)
         self.normalized_bands = self.files_handler.get_normalized_bands(
