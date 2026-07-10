@@ -8,7 +8,7 @@ tags:
   - image processing
   - spectral indices
 authors:
-  - name: Mahdi FarmahiniFarahani
+  - name: Mahdi Farmahinifarahani
     orcid: 0009-0008-3800-8688
     affiliation: '1'
   - name: Parsa Elmi
