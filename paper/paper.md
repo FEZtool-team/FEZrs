@@ -52,7 +52,7 @@ affiliations:
     index: 5
   - name: Faculty of Earth Sciences, Kharazmi University, Tehran, Iran
     index: 6
-date: 9 July 2026
+date: 11 July 2026
 bibliography: paper.bib
 ---
 
@@ -112,7 +112,11 @@ The package is modular by domain: (`spectral_indices`, `filters`, `image_enhance
 
 # Research Impact Statement
 
-Since its release on PyPI in February 2025, FEZrs has been downloaded more than 100,000 times, indicating growing adoption within the remote sensing and geospatial community. The project is openly available through GitHub, PyPI, and the Anaconda ecosystem as an open-source Python package. Comprehensive documentation, practical examples, a test suite, and a modular architecture facilitate the integration of FEZrs into reproducible research workflows and operational geospatial workflows. Detailed installation instructions for both pip (`pip install fezrs`) and conda (`conda install -c FEZtool fezrs`) are available in the FEZrs Installation Guide.
+Since its release on PyPI in February 2025, FEZrs has been downloaded more than 100,000 times and is openly available through GitHub, PyPI, and the Anaconda ecosystem as an open-source Python package.
+
+FEZrs has been employed in research on remote sensing and geospatial analysis. It has been used for principal component analysis (PCA) of Landsat 9 multispectral imagery @farahani2024pca, comparison of K-means clustering and spectral indices for land use and land cover characterization @rezaei2024kmeans, and a comparative assessment of SVM, K-means, and spectral indices for land cover classification in engineering geology @talkhablou2025engineering. In addition, FEZrs received the **Merit Award (Ideator Category)** at the **9th Iran National Young Scientists Festival**.
+
+The project provides comprehensive documentation, practical examples, a test suite, and a modular architecture to support reproducible research and operational geospatial workflows. Detailed installation instructions for both pip (`pip install fezrs`) and conda (`conda install -c FEZtool fezrs`) are available in the FEZrs Installation Guide.
 
 # Acknowledgements
 
