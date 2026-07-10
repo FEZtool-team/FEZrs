@@ -81,12 +81,3 @@ class MedianCalculator(BaseTool):
             bbox_inches,
             grid,
         )
-
-
-# NOTE - These block code for test the tools, delete before publish product
-# if __name__ == "__main__":
-#     tif_path = Path.cwd() / "data/IMG.tif"
-
-#     calculator = MedianCalculator(tif_path=tif_path, kernel_size=5).execute(
-#         output_path="./", title="Median output"
-#     )
