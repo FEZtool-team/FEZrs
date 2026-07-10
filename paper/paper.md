@@ -1,5 +1,5 @@
 ---
-title: 'FEZrs: An Open-Source Python Package for Geospatial Multispectral Image Processing and Remote Sensing Analysis'
+title: 'FEZrs: An Open-Source Python Package for Geospatial Multispectral Image Processing and Remote Sensing'
 tags:
   - Python
   - remote sensing
