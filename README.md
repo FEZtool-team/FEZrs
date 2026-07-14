@@ -91,7 +91,7 @@ equalize.execute(output_path="./your/export/path")
 - `SpectralProfileCalculator`
 
 ## **Contributing**
-
+ 
 We welcome contributions! To contribute:
 
 1. Fork the repository
