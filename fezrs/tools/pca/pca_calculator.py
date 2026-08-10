@@ -1,13 +1,13 @@
-# Import packages and libraries
-import numpy as np
 from uuid import uuid4
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA as skpc
 
-# Import module and files
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.decomposition import PCA as skpc
+from pathlib import Path
+
 from fezrs.base import BaseTool
-from fezrs.utils.type_handler import BandPathType, BandNamePCAType
 from fezrs.utils.histogram_handler import HistogramExportMixin
+from fezrs.utils.type_handler import BandNamePCAType, BandPathType
 
 
 class PCACalculator(BaseTool, HistogramExportMixin):
@@ -41,13 +41,18 @@ class PCACalculator(BaseTool, HistogramExportMixin):
             ]
         )
 
+        # Raster shape must be (height, width), not (width, height)
         self.image_shape = (
-            self.metadata_bands["red"]["width"],
             self.metadata_bands["red"]["height"],
+            self.metadata_bands["red"]["width"],
         )
 
         self.selectBand = selectBand
 
+        # Input band order.
+        #
+        # This order MUST match the order returned by
+        # files_handler.get_images_collection().
         self.bindTheBandsToNumber = {
             "red": 0,
             "nir": 1,
@@ -58,17 +63,138 @@ class PCACalculator(BaseTool, HistogramExportMixin):
         }
 
     def _validate(self):
-        pass
+        """
+        Validate the input raster bands before performing PCA.
+        """
+
+        if len(self.metadata_bands) != 6:
+            raise ValueError(
+                "PCA requires exactly 6 spectral bands."
+            )
+
+        height, width = self.image_shape
+
+        if height <= 0 or width <= 0:
+            raise ValueError(
+                f"Invalid raster dimensions: "
+                f"height={height}, width={width}"
+            )
+
+        required_bands = [
+            "red",
+            "nir",
+            "blue",
+            "swir1",
+            "swir2",
+            "green",
+        ]
+
+        missing_bands = [
+            band
+            for band in required_bands
+            if band not in self.metadata_bands
+        ]
+
+        if missing_bands:
+            raise ValueError(
+                f"Missing required PCA bands: {missing_bands}"
+            )
+
+        if self.selectBand is not None:
+            if self.selectBand not in self.bindTheBandsToNumber:
+                raise ValueError(
+                    f"Invalid PCA band: {self.selectBand}"
+                )
 
     def process(self):
-        image_columns = []
-        image_columns_filtered = self.files_handler.get_images_collection()
-        for i in range(len(image_columns_filtered)):
-            image_columns.append(image_columns_filtered[i].flatten())
-        images = np.array(image_columns)
+        """
+        Perform PCA on the six input raster bands.
+
+        Input:
+            Six raster images with shape:
+                (height, width)
+
+        PCA input matrix:
+            (number_of_pixels, number_of_bands)
+
+        Example:
+            1000 x 1000 image with 6 bands:
+
+                (1000000, 6)
+
+        PCA output:
+            (number_of_pixels, 6)
+
+        Finally, the PCA components are reshaped back into
+        raster images:
+
+            (6, height, width)
+        """
+
+        self._validate()
+
+        images_collection = self.files_handler.get_images_collection()
+
+        if len(images_collection) != 6:
+            raise ValueError(
+                "PCA requires exactly 6 input images, "
+                f"but received {len(images_collection)}."
+            )
+
+        height, width = self.image_shape
+
+        # Validate every raster.
+        for index, image in enumerate(images_collection):
+            image = np.asarray(image)
+
+            if image.shape != self.image_shape:
+                raise ValueError(
+                    f"Invalid shape for input band {index}. "
+                    f"Expected {self.image_shape}, "
+                    f"received {image.shape}."
+                )
+
+        images = np.stack(
+            [np.asarray(image) for image in images_collection],
+            axis=-1,
+        )
+
+        images = images.reshape(-1, 6)
+
+        images = images.astype(np.float64, copy=False)
+
+        valid_mask = np.all(
+            np.isfinite(images),
+            axis=1,
+        )
+
+        if not np.any(valid_mask):
+            raise ValueError(
+                "No valid pixels were found for PCA."
+            )
+
         pca = skpc(n_components=6)
-        pca.fit(images)
-        self._output = pca.components_[:6]
+
+        transformed_valid = pca.fit_transform(
+            images[valid_mask]
+        )
+
+        transformed = np.full(
+            (images.shape[0], 6),
+            np.nan,
+            dtype=np.float64,
+        )
+
+        transformed[valid_mask] = transformed_valid
+
+        self._output = transformed.T.reshape(
+            6,
+            height,
+            width,
+        )
+
+        self._pca = pca
+
         return self._output
 
     def _customize_export_file(self, ax):
@@ -83,18 +209,27 @@ class PCACalculator(BaseTool, HistogramExportMixin):
         dpi: int = 500,
         bbox_inches: str = "tight",
         grid: bool = True,
-        # show_axis: bool = False,
-        # colormap: str = None,
-        # show_colorbar: bool = False,
     ):
+        
+
         if self.selectBand is None:
-            raise "You cant use histogram method if you are not passed select band value"
+            raise ValueError(
+                "You cannot use histogram_export() without "
+                "passing selectBand."
+            )
+
         self._validate()
-        self.process()
+
+        if not hasattr(self, "_output"):
+            self.process()
+
+        component_index = self.bindTheBandsToNumber[
+            self.selectBand
+        ]
+
+        pca_component = self._output[component_index]
 
         fig, ax = plt.subplots(figsize=figsize)
-
-        pca_component = self._output[self.bindTheBandsToNumber[self.selectBand]]
 
         ax.hist(
             pca_component.ravel(),
@@ -103,17 +238,32 @@ class PCACalculator(BaseTool, HistogramExportMixin):
             histtype="bar",
             color="black",
         )
-        ax.set_title(f"Histogram of PCA Band {self.selectBand.capitalize()}")
+
+        ax.set_title(
+            f"Histogram of PCA Band "
+            f"{self.selectBand.capitalize()}"
+        )
 
         if title:
-            plt.title(f"{title}-FEZrs")
+            ax.set_title(
+                f"{title}-FEZrs"
+            )
 
-        plt.xlabel("Bands")
-        plt.ylabel("Intensity")
-        plt.grid(grid)
+        ax.set_xlabel("PCA Value")
+        ax.set_ylabel("Density")
+        ax.grid(grid)
 
         self._add_watermark(ax)
-        self._save_histogram_figure(ax, output_path, filename_prefix, dpi, bbox_inches)
+
+        self._save_histogram_figure(
+            ax,
+            output_path,
+            filename_prefix,
+            dpi,
+            bbox_inches,
+        )
+
+        plt.close(fig)
 
         return self
 
@@ -132,13 +282,46 @@ class PCACalculator(BaseTool, HistogramExportMixin):
         nrows=6,
         ncols=2,
     ):
-        fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
-        plt.title(title)
+        """
+        Export all six PCA components.
+
+        Each row contains:
+
+            [ PCA image | PCA histogram ]
+        """
+
+        fig, ax = plt.subplots(
+            nrows=nrows,
+            ncols=ncols,
+            figsize=figsize,
+        )
+
+        # Make sure ax is always two-dimensional.
+        ax = np.asarray(ax).reshape(
+            nrows,
+            ncols,
+        )
+
         for i, pca_component in enumerate(self._output):
-            reshaped_component = pca_component.reshape(self.image_shape)
-            ax[i, 0].imshow(reshaped_component, cmap=colormap)
-            ax[i, 0].set_title(f"PCA Band {i + 1}")
-            ax[i, 0].axis("off")
+            # pca_component already has shape:
+            #
+            #   height x width
+            #
+            # Therefore, DO NOT reshape it here.
+            ax[i, 0].imshow(
+                pca_component,
+                cmap=colormap,
+            )
+
+            ax[i, 0].set_title(
+                f"PCA Band {i + 1}"
+            )
+
+            if show_axis:
+                ax[i, 0].axis("on")
+            else:
+                ax[i, 0].axis("off")
+
             ax[i, 1].hist(
                 pca_component.ravel(),
                 bins=256,
@@ -146,14 +329,32 @@ class PCACalculator(BaseTool, HistogramExportMixin):
                 histtype="bar",
                 color="black",
             )
-            ax[i, 1].set_title(f"Histogram of PCA Band {i + 1}")
 
-        # Export file
-        filename = f"{output_path}/{filename_prefix}_{uuid4().hex}.png"
-        fig.savefig(filename, dpi=dpi, bbox_inches=bbox_inches)
+            ax[i, 1].set_title(
+                f"Histogram of PCA Band {i + 1}"
+            )
 
-        # Close plt and return value
+            ax[i, 1].grid(grid)
+
+        if title:
+            fig.suptitle(title)
+
+        self._customize_export_file(ax)
+
+        filename = (
+            f"{output_path}/"
+            f"{filename_prefix}_{uuid4().hex}.png"
+        )
+
+        fig.savefig(
+            filename,
+            dpi=dpi,
+            bbox_inches=bbox_inches,
+        )
+
         plt.close(fig)
+
+        return self
 
     def execute(
         self,
