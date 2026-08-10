@@ -28,7 +28,7 @@ setup(
     include_package_data=True,
     package_data={"fezrs": ["media/logo_watermark.png"]},
     install_requires=read_requirements("requirements.txt"),
-    author="Mahdi Farmahinifarahani, Hooman Mirzaee, Mahdi Nedaee, Mohammad Hossein Kiani Fayz Abadi, Parsa Elmi",
+    author="Mahdi Farmahinifarahani, Parsa Elmi, Mehdi Nedaee, Mohammad Kiani faizabadi, Hooman Mirzaee, Parsa Moradi, Mohammadhossein Yazdanifar, Fariba Khosravani, Fatemeh Najafi, Mehdi Talkhablou",
     author_email="aradfarahani@aol.com",
     description="Feature Extraction and Zoning for Remote Sensing (FEZrs)",
     long_description=(ROOT / "README.md").read_text(),
