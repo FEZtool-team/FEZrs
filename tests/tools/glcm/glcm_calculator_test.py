@@ -1,5 +1,7 @@
 import numpy as np
 import pytest
+from unittest.mock import MagicMock, patch
+from skimage.feature import graycomatrix, graycoprops
 
 from fezrs.tools.glcm.glcm_calculator import GLCMCalculator
 
@@ -84,6 +86,123 @@ def test_execute_returns_self():
     result = calculator.execute(".")
 
     assert result is calculator
+
+
+HEIGHT = 4
+WIDTH = 7
+WINDOW_SIZE = 3
+
+# Asymmetric 4x7 raster so a row/column swap cannot match the reference.
+NONSQUARE_IMAGE = np.array(
+    [
+        [1, 2, 3, 4, 5, 6, 7],
+        [10, 20, 30, 40, 50, 60, 70],
+        [3, 1, 4, 1, 5, 9, 2],
+        [8, 8, 8, 1, 2, 3, 4],
+    ],
+    dtype=np.uint8,
+)
+
+
+def _expected_glcm_value(image, row, col, window_size, property_name):
+    window = image[row : row + window_size, col : col + window_size]
+    glcm = graycomatrix(window, [1], [0], normed=True, symmetric=True)
+    return graycoprops(glcm, property_name)[0][0]
+
+
+@pytest.fixture
+def nonsquare_calculator():
+    """
+    4x7 GLCMCalculator built through __init__ so allocation uses (height, width).
+    """
+    fake_metadata = {
+        "nir": {
+            "width": WIDTH,
+            "height": HEIGHT,
+            "image_skimage": NONSQUARE_IMAGE,
+        }
+    }
+
+    fake_files_handler = MagicMock()
+    fake_files_handler.get_metadata_bands.return_value = fake_metadata
+
+    def fake_init(self, *args, **kwargs):
+        self.files_handler = fake_files_handler
+        self._output = None
+
+    with patch(
+        "fezrs.tools.glcm.glcm_calculator.BaseTool.__init__",
+        fake_init,
+    ):
+        calculator = GLCMCalculator(
+            nir_path="dummy_nir.tif",
+            window_size=WINDOW_SIZE,
+            propery="contrast",
+        )
+
+    return calculator
+
+
+def test_nonsquare_init_allocates_height_width(nonsquare_calculator):
+    assert nonsquare_calculator.result.shape == (HEIGHT, WIDTH)
+    assert nonsquare_calculator.nir_image.shape == (HEIGHT, WIDTH)
+
+
+def test_nonsquare_output_shape(nonsquare_calculator):
+    nonsquare_calculator.process()
+
+    assert nonsquare_calculator._output.shape == (HEIGHT, WIDTH)
+
+
+def test_nonsquare_interior_matches_skimage(nonsquare_calculator):
+    """
+    Interior pixels have a full window and must match graycomatrix/graycoprops.
+    """
+    nonsquare_calculator.process()
+
+    interior_pixels = ((0, 0), (0, 2), (1, 4))
+    for row, col in interior_pixels:
+        window = NONSQUARE_IMAGE[
+            row : row + WINDOW_SIZE, col : col + WINDOW_SIZE
+        ]
+        assert window.shape == (WINDOW_SIZE, WINDOW_SIZE)
+
+        expected = _expected_glcm_value(
+            NONSQUARE_IMAGE, row, col, WINDOW_SIZE, "contrast"
+        )
+        np.testing.assert_allclose(
+            nonsquare_calculator._output[row, col],
+            expected,
+        )
+
+
+def test_nonsquare_border_uses_truncated_window(nonsquare_calculator):
+    """
+    Near the right and bottom edges the window is clipped to the image.
+    Those pixels are still computed, not left uninitialized.
+    """
+    nonsquare_calculator.process()
+
+    border_pixels = (
+        (0, WIDTH - 1),
+        (HEIGHT - 1, 0),
+        (HEIGHT - 1, WIDTH - 1),
+        (1, WIDTH - 2),
+    )
+    for row, col in border_pixels:
+        window = NONSQUARE_IMAGE[
+            row : row + WINDOW_SIZE, col : col + WINDOW_SIZE
+        ]
+        assert window.shape[0] < WINDOW_SIZE or window.shape[1] < WINDOW_SIZE
+
+        expected = _expected_glcm_value(
+            NONSQUARE_IMAGE, row, col, WINDOW_SIZE, "contrast"
+        )
+        np.testing.assert_allclose(
+            nonsquare_calculator._output[row, col],
+            expected,
+        )
+        assert np.isfinite(nonsquare_calculator._output[row, col])
 
 
 # NOTE - These block code for integration test the GLCMCalculator

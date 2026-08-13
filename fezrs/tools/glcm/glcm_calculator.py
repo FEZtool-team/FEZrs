@@ -19,7 +19,7 @@ class GLCMCalculator(BaseTool):
         )
 
         self.result = np.empty(
-            (self.metadata_bands["nir"]["width"], self.metadata_bands["nir"]["height"])
+            (self.metadata_bands["nir"]["height"], self.metadata_bands["nir"]["width"])
         )
 
         self.nir_image = np.array(
@@ -30,9 +30,11 @@ class GLCMCalculator(BaseTool):
         self.window_size = window_size
 
     def process(self):
-        for i in range(0, self.metadata_bands["nir"]["width"]):
-            print(f"Processing row {i} of {self.metadata_bands['nir']['width']}")
-            for j in range(0, self.metadata_bands["nir"]["height"]):
+        height = self.metadata_bands["nir"]["height"]
+        width = self.metadata_bands["nir"]["width"]
+        for i in range(0, height):
+            print(f"Processing row {i} of {height}")
+            for j in range(0, width):
                 window = self.nir_image[
                     i : i + self.window_size, j : j + self.window_size
                 ]
