@@ -1,9 +1,53 @@
 import numpy as np
 import pytest
 from unittest.mock import MagicMock, patch
-from sklearn.decomposition import PCA
 
 from fezrs.tools.pca.pca_calculator import PCACalculator
+
+
+HEIGHT = 4
+WIDTH = 7
+N_BANDS = 6
+
+
+def _nonsquare_bands():
+    """
+    Deterministic 4x7 bands with linearly independent spatial patterns.
+
+    Affine copies of a single ramp (for example arange + offset) collapse
+    to rank 1 after centering and cannot detect a sample/feature swap.
+    """
+    rows, cols = np.indices((HEIGHT, WIDTH), dtype=float)
+    return [
+        rows,
+        cols,
+        rows * cols,
+        rows**2,
+        cols**2,
+        rows**2 * cols,
+    ]
+
+
+def _numpy_pca_scores(images, height, width):
+    """
+    Independent pixel-as-sample PCA using NumPy SVD, not sklearn.
+
+    X has shape (height * width, n_bands). Scores are reshaped to
+    (n_bands, height, width). Component signs may differ from sklearn.
+    """
+    n_bands = len(images)
+    samples = np.stack([np.asarray(image) for image in images], axis=-1)
+    samples = samples.reshape(-1, n_bands).astype(np.float64)
+    centered = samples - samples.mean(axis=0, keepdims=True)
+    _, _, vt = np.linalg.svd(centered, full_matrices=False)
+    scores = centered @ vt.T
+    return scores.T.reshape(n_bands, height, width)
+
+
+def _align_component_sign(actual, expected):
+    if np.dot(actual.ravel(), expected.ravel()) < 0:
+        return -expected
+    return expected
 
 
 @pytest.fixture
@@ -14,8 +58,8 @@ def mock_pca_calculator():
     The raster shape is intentionally 4x7 so that width/height
     transposition bugs cannot be hidden by a square raster.
     """
-    height = 4
-    width = 7
+    height = HEIGHT
+    width = WIDTH
 
     fake_metadata = {
         "red": {"width": width, "height": height},
@@ -26,24 +70,7 @@ def mock_pca_calculator():
         "swir2": {"width": width, "height": height},
     }
 
-    # Deterministic and asymmetric data.
-    # Every band has different values so that transposition/order
-    # mistakes are easy to detect.
-    red = np.arange(1, 29, dtype=float).reshape(height, width)
-    green = np.arange(101, 129, dtype=float).reshape(height, width)
-    blue = np.arange(201, 229, dtype=float).reshape(height, width)
-    nir = np.arange(301, 329, dtype=float).reshape(height, width)
-    swir1 = np.arange(401, 429, dtype=float).reshape(height, width)
-    swir2 = np.arange(501, 529, dtype=float).reshape(height, width)
-
-    fake_images_collection = [
-        red,
-        green,
-        blue,
-        nir,
-        swir1,
-        swir2,
-    ]
+    fake_images_collection = _nonsquare_bands()
 
     fake_files_handler = MagicMock()
     fake_files_handler.get_metadata_bands.return_value = fake_metadata
@@ -99,16 +126,15 @@ def test_process_output_shape(mock_pca_calculator):
     result = mock_pca_calculator.process()
 
     assert result is not None
-    assert len(result) == 6
+    assert result.shape == (N_BANDS, HEIGHT, WIDTH)
 
     for component in result:
-        assert component.shape == (4, 7)
+        assert component.shape == (HEIGHT, WIDTH)
 
 
 def test_process_numerical_values(mock_pca_calculator):
     """
-    Compare PCACalculator's result against an independently-created
-    sklearn PCA reference.
+    Compare PCACalculator against an independent NumPy SVD reference.
 
     Each pixel is a sample and each spectral band is a feature:
 
@@ -118,35 +144,33 @@ def test_process_numerical_values(mock_pca_calculator):
     result = mock_pca_calculator.process()
 
     images = mock_pca_calculator.files_handler.get_images_collection()
+    expected_input = np.stack(images, axis=-1).reshape(-1, N_BANDS)
+    assert expected_input.shape == (HEIGHT * WIDTH, N_BANDS)
 
-    expected_input = np.stack(
-        images,
-        axis=-1,
-    ).reshape(-1, 6)
+    expected_components = _numpy_pca_scores(images, HEIGHT, WIDTH)
 
-    assert expected_input.shape == (28, 6)
+    for actual, expected_component in zip(result, expected_components):
+        aligned = _align_component_sign(actual, expected_component)
+        np.testing.assert_allclose(actual, aligned, atol=1e-8, rtol=1e-6)
 
-    reference_pca = PCA(n_components=6)
-    expected = reference_pca.fit_transform(expected_input)
 
-    expected_components = [
-        expected[:, index].reshape(4, 7)
-        for index in range(6)
-    ]
+def test_process_pixels_are_samples_not_bands(mock_pca_calculator):
+    """
+    With 28 independent 6-band pixels the covariance has rank 6, so every
+    explained-variance entry is nonzero. Treating the 6 bands as samples
+    would center a 6-row matrix and force the last component to ~0.
+    """
+    mock_pca_calculator.process()
 
-    for actual, expected_component in zip(
-        result,
-        expected_components,
-    ):
-        # PCA component signs can theoretically be flipped.
-        # Since both calculations use the same sklearn implementation,
-        # they should normally have identical signs, but allowing a
-        # sign flip makes this test robust to equivalent PCA solutions.
-        if not np.allclose(actual, expected_component):
-            np.testing.assert_allclose(
-                actual,
-                -expected_component,
-            )
+    explained = mock_pca_calculator._pca.explained_variance_
+    assert explained.shape == (N_BANDS,)
+    assert np.all(explained > 1e-8)
+
+    images = mock_pca_calculator.files_handler.get_images_collection()
+    band_as_sample = np.stack(images, axis=0).reshape(N_BANDS, -1)
+    centered_bands = band_as_sample - band_as_sample.mean(axis=0, keepdims=True)
+    # 6 samples, 28 features: rank is at most 5 after centering
+    assert np.linalg.matrix_rank(centered_bands) <= N_BANDS - 1
 
 
 def test_histogram_export_requires_select_band(mock_pca_calculator):

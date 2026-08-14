@@ -5,85 +5,89 @@ The `pca` module implements a Principal Component Analysis (PCA) workflow design
 
 This module unifies a six-band multi-spectral stack—typically comprising the visible spectrum (**Red, Green, Blue**), Near-Infrared (**NIR**), and Short-Wave Infrared (**SWIR1, SWIR2**)—and projects it into a new coordinate space. The resulting orthogonal axes, or **Principal Components (PCs)**, are ordered by the amount of total variance they explain, isolating dominant spatial patterns and suppressing high-frequency sensor noise.
 
-This mathematical inversion identifies the dominant spatial patterns that account for the most variability _across the band dimension_, generating coherent **eigenimages** that capture unique landscape characteristics.
+This projection identifies the dominant spatial patterns that account for the most variability across the six spectral bands at each pixel, generating coherent **eigenimages** that capture unique landscape characteristics.
 
 ```
        [6 Native Spatial Bands] (Red, Green, Blue, NIR, SWIR1, SWIR2)
                   │
                   ▼
    ┌─────────────────────────────┐
-   │ 2D Array Flattening Block   │ ──► Each band reshaped to (1, N) vector
+   │ Stack + Flatten Block       │ ──► Each pixel is one sample; each band is one feature
    └──────────────┬──────────────┘
                   │
                   ▼
    ┌─────────────────────────────┐
-   │ Matrix Construction ($X$)    │ ──► Dimensions: $\mathbb{R}^{6 \times N}$ ($m=6$ bands, $n=N$ pixels)
+   │ Matrix Construction ($X$)    │ ──► Dimensions: $\mathbb{R}^{N \times 6}$ ($N = H \times W$ pixels, 6 bands)
    └──────────────┬──────────────┘
                   │
                   ▼
    ┌─────────────────────────────┐
-   │ Broadcast Variable Centering│ ──► Subtract mean pixel brightness: $X_c = X - \bar{x}$
+   │ Feature Centering           │ ──► Subtract each band's mean: $X_c = X - \bar{x}$
    └──────────────┬──────────────┘
                   │
                   ▼
    ┌─────────────────────────────┐
-   │  Singular Value Decomposition│ ──► $X_c = U \Sigma V^T$ (Avoids $N \times N$ Covariance Matrix)
+   │  Singular Value Decomposition│ ──► $X_c = U \Sigma V^T$ (covariance is $6 \times 6$)
    └──────────────┬──────────────┘
                   │
         ┌─────────┴─────────┐
         ▼                   ▼
-   [Left Singular Vectors] [Right Singular Vectors ($V^T$)]
-    Spectral Loadings       6 Spatial Eigenimages (PC1 - PC6)
-   ($U \in \mathbb{R}^{6 \times 6}$)       Shape: $(6, N) \to$ Reshaped to $(H, W)$
+   [Right Singular Vectors $V$]  [Scores $T = X_c V$]
+    Spectral loadings            6 spatial eigenimages (PC1 - PC6)
+   ($V \in \mathbb{R}^{6 \times 6}$)     Shape: $(N, 6) \to$ reshaped to $(6, H, W)$
 ```
 
 ## Comprehensive Mathematical Foundations
 
 ### Spatial Data Matrix Construction
 
-Let each input band $b$ (where $b \in \{1, 2, \dots, 6\}$) represent a discrete 2D image matrix of height $H$ and width $W$. Each band matrix is flattened into a single row vector of length $N$, where $N = H \times W$. The combined multi-spectral data matrix $X$ is constructed by stacking these row vectors vertically:
+Let each input band $b$ (where $b \in \{1, 2, \dots, 6\}$) represent a discrete 2D image matrix of height $H$ and width $W$. Each pixel is treated as one statistical sample, and each spectral band is treated as one feature. After stacking the six bands and flattening the spatial axes, the multi-spectral data matrix is:
 
-$$X = \begin{bmatrix} \text{band}_1 \\ \text{band}_2 \\ \vdots \\ \text{band}_6 \end{bmatrix} \in \mathbb{R}^{6 \times N}$$
+$$X \in \mathbb{R}^{N \times 6}, \qquad N = H \times W$$
 
-In this framework, the matrix contains $m = 6$ samples (the spectral bands) and $n = N$ features (the individual pixel coordinates).
+Row $i$ of $X$ is the six-band reflectance vector of a single pixel. This is the orientation expected by `sklearn.decomposition.PCA`, which treats rows as samples and columns as features.
 
-### Broadcast Variable Centering
+### Feature Centering
 
-To eliminate global illumination offsets, the data must be centered before decomposition. The algorithm calculates the mean value $\bar{x}_j$ for each pixel variable $j$ across the 6 spectral samples:
+Each spectral band is centered by subtracting that band's mean across all pixels:
 
-$$\bar{x}_j = \frac{1}{m} \sum_{i=1}^{m} X_{ij}$$
+$$\bar{x}_b = \frac{1}{N} \sum_{i=1}^{N} X_{ib}, \qquad b \in \{1, \dots, 6\}$$
 
-The centered data matrix $X_c$ is formed by subtracting this mean vector from each row of $X$:
+$$X_c = X - \bar{x}$$
 
-$$X_c = X - \begin{bmatrix} \bar{x}_1 & \bar{x}_2 & \dots & \bar{x}_N \end{bmatrix}_{1 \times N}$$
+This removes the global brightness offset of each band before decomposition.
 
-This centering operation is broadcast across all rows, centering each individual pixel variable around zero.
+### Covariance and SVD
 
-### Resolving the Dimensionality Boundary via SVD
+With six features, the sample covariance is a $6 \times 6$ matrix:
 
-The classical covariance matrix $C$ for the pixel features is defined as:
+$$C = \frac{1}{N - 1} X_c^T X_c \in \mathbb{R}^{6 \times 6}$$
 
-$$C = \frac{1}{m - 1} X_c^T X_c \in \mathbb{R}^{N \times N}$$
-
-Because a typical satellite scene contains millions of pixels ($N > 10^6$), building and decomposing this $N \times N$ matrix directly is computationally prohibitive. To bypass this bottleneck, `PCACalculator` uses **Singular Value Decomposition (SVD)** directly on the centered data matrix $X_c$:
+`PCACalculator` uses `sklearn.decomposition.PCA`, which centers $X$ and computes the SVD:
 
 $$X_c = U \Sigma V^T$$
 
 Where:
 
-- $U \in \mathbb{R}^{6 \times 6}$ is an orthogonal matrix containing the left singular vectors, which represent the spectral loadings for each band.
+- $U \in \mathbb{R}^{N \times 6}$ contains the left singular vectors.
     
-- $\Sigma \in \mathbb{R}^{6 \times 6}$ is a diagonal matrix containing the sorted singular values ($\sigma_1 \ge \sigma_2 \ge \dots \ge \sigma_6 \ge 0$).
+- $\Sigma \in \mathbb{R}^{6 \times 6}$ is a diagonal matrix of singular values ($\sigma_1 \ge \sigma_2 \ge \dots \ge \sigma_6 \ge 0$).
     
-- $V \in \mathbb{R}^{N \times 6}$ contains the right singular vectors, which correspond to the spatial eigenvectors of the massive $C$ matrix.
+- $V \in \mathbb{R}^{6 \times 6}$ contains the right singular vectors (spectral loadings).
 
-The eigenvalues $\lambda_k$ of the underlying covariance matrix are directly related to the singular values $\sigma_k$ by:
+The spatial principal-component images are the transformed sample scores:
 
-$$\lambda_k = \frac{\sigma_k^2}{m - 1}$$
+$$T = X_c V = U \Sigma \in \mathbb{R}^{N \times 6}$$
+
+Each column of $T$ is then reshaped back to $(H, W)$. The full output stack has shape $(6, H, W)$.
+
+The eigenvalues $\lambda_k$ of $C$ are related to the singular values by:
+
+$$\lambda_k = \frac{\sigma_k^2}{N - 1}$$
 
 ### Quantifying Explained Variance
 
-The $k$-th row of the transposed right singular matrix $V^T$ represents the $k$-th principal component vector, which has a length of $N$. The proportion of total spatial variance captured by this component is calculated directly from its singular value:
+The proportion of total spectral variance captured by component $k$ is:
 
 $$VE_k = \frac{\lambda_k}{\sum_{j=1}^{6} \lambda_j} = \frac{\sigma_k^2}{\sum_{j=1}^{6} \sigma_j^2}$$
 
@@ -127,13 +131,13 @@ These higher-order components capture progressively smaller variations in the da
 
 #### Processing Pipeline Lifecycle (`process()`)
 
-1. Ingests the six target spectral bands and flattens each 2D matrix into a continuous 1D array.
+1. Ingests the six target spectral bands, each with shape `(height, width)`.
     
-2. Combines the flattened arrays into a single unified matrix of shape `(6, N_pixels)`.
+2. Stacks the bands into a matrix of shape `(N_pixels, 6)`, where `N_pixels = height * width`. Each row is one pixel; each column is one spectral band.
     
-3. Passes this data matrix to `sklearn.decomposition.PCA(n_components=6)`. The model centers the variables and executes an optimized SVD.
+3. Passes this matrix to `sklearn.decomposition.PCA(n_components=6).fit_transform()`. The model centers each band and returns the six principal-component scores for every pixel.
     
-4. Extracts the six spatial eigenvectors from `pca.components_` and stores this `(6, N_pixels)` array in `self._output`.
+4. Reshapes the `(N_pixels, 6)` score matrix to `(6, height, width)` and stores it in `self._output`.
 
 #### Visualization Lifecycle (`_export_file`)
 
@@ -145,7 +149,7 @@ Generates a structured $6 \times 2$ grid layout to support visual data analysis:
 
 #### Return Value
 
-Returns a floating-point `numpy.ndarray` of shape `(6, N_pixels)`. Each row in this matrix contains the continuous spatial weights for one of the six principal components.
+Returns a floating-point `numpy.ndarray` of shape `(6, height, width)`. Each slice along the first axis is one principal-component image.
 
 ### Operational Implementation
 
