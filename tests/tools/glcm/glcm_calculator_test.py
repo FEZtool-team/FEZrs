@@ -30,7 +30,7 @@ def calculator():
 
     obj.result = np.empty((4, 4))
     obj.nir_image = image
-    obj.window_size = 2
+    obj.window_size = 3
     obj.property = "contrast"
     obj._output = None
 
@@ -62,6 +62,8 @@ def test_process_output_contains_finite_values(calculator):
         "ASM",
         "dissimilarity",
         "homogeneity",
+        "energy",
+        "correlation",
     ],
 )
 def test_process_supports_all_properties(calculator, property_name):
@@ -72,8 +74,69 @@ def test_process_supports_all_properties(calculator, property_name):
     assert calculator._output.shape == (4, 4)
 
 
-def test_validate_does_not_raise(calculator):
+def test_validate_accepts_valid_inputs(calculator):
+    calculator.window_size = 3
+    calculator.property = "contrast"
     calculator._validate()
+
+
+@pytest.mark.parametrize("window_size", [3, 5, 7])
+def test_validate_accepts_odd_window_size(calculator, window_size):
+    calculator.window_size = window_size
+    calculator._validate()
+
+
+@pytest.mark.parametrize("window_size", [1, 2, 4, 0, -1])
+def test_validate_rejects_invalid_window_size(calculator, window_size):
+    calculator.window_size = window_size
+    with pytest.raises(ValueError, match="window_size"):
+        calculator._validate()
+
+
+def test_validate_rejects_non_integer_window_size(calculator):
+    calculator.window_size = 3.0
+    with pytest.raises(ValueError, match="window_size must be an int"):
+        calculator._validate()
+
+
+def test_validate_rejects_invalid_property(calculator):
+    calculator.property = "not_a_property"
+    with pytest.raises(ValueError, match="Invalid GLCM property"):
+        calculator._validate()
+
+
+def test_validate_rejects_missing_input_path(calculator, tmp_path):
+    calculator.files_handler = MagicMock()
+    calculator.files_handler.band_paths = {
+        "nir": str(tmp_path / "does_not_exist.tif"),
+    }
+
+    with pytest.raises(FileNotFoundError):
+        calculator._validate()
+
+
+def test_validate_accepts_existing_input_path(calculator, tmp_path):
+    nir_path = tmp_path / "nir.tif"
+    nir_path.write_bytes(b"placeholder")
+    calculator.files_handler = MagicMock()
+    calculator.files_handler.band_paths = {"nir": str(nir_path)}
+
+    calculator._validate()
+
+
+def test_init_rejects_nonexistent_input_path():
+    with pytest.raises(FileNotFoundError):
+        GLCMCalculator(
+            nir_path="/this/path/does/not/exist.tif",
+            window_size=3,
+            propery="contrast",
+        )
+
+
+def test_process_rejects_invalid_window_size(calculator):
+    calculator.window_size = 2
+    with pytest.raises(ValueError, match="window_size"):
+        calculator.process()
 
 
 def test_execute_returns_self():
@@ -167,6 +230,28 @@ def test_nonsquare_interior_matches_skimage(nonsquare_calculator):
         ]
         assert window.shape == (WINDOW_SIZE, WINDOW_SIZE)
 
+        expected = _expected_glcm_value(
+            NONSQUARE_IMAGE, row, col, WINDOW_SIZE, "contrast"
+        )
+        np.testing.assert_allclose(
+            nonsquare_calculator._output[row, col],
+            expected,
+        )
+
+
+def test_nonsquare_top_left_uses_full_window(nonsquare_calculator):
+    """
+    The window is anchored at (row, col) and extends down/right, so the
+    top and left borders still have a full window_size x window_size block.
+    """
+    nonsquare_calculator.process()
+
+    top_left_pixels = ((0, 0), (0, 3), (1, 0))
+    for row, col in top_left_pixels:
+        window = NONSQUARE_IMAGE[
+            row : row + WINDOW_SIZE, col : col + WINDOW_SIZE
+        ]
+        assert window.shape == (WINDOW_SIZE, WINDOW_SIZE)
         expected = _expected_glcm_value(
             NONSQUARE_IMAGE, row, col, WINDOW_SIZE, "contrast"
         )

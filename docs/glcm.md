@@ -118,22 +118,24 @@ $$\sigma_i = \sqrt{\sum_{i=0}^{G-1} \sum_{j=0}^{G-1} (i - \mu_i)^2 \cdot p(i, j)
 ```
   Input Image (H x W)                      Sliding Analysis Window             Output Raster Construction
 ┌──────────────────────────────┐          ┌───────────────────┐               ┌──────────────────────────────┐
-│                              │          │ x ──► Stride = 1  │               │Valid Feature Map             │
-│                              │          │ │                 │               │ ┌──────────────────────┐     │
-│                              │  ───►    │ ▼                 │       ───►    │ │                      │     │
-│                              │          │ Window Size (W)   │               │ │                      │     │
-│                              │          └───────────────────┘               │ └──────────────────────┘     │
-│                              │          Computes GLCM via                   │ Unprocessed Border Padding   │
+│                              │          │ x ──► Stride = 1  │               │Full Feature Map (H x W)      │
+│                              │          │ │                 │               │ ┌──────────────────────────┐ │
+│                              │  ───►    │ ▼                 │       ───►    │ │ All pixels computed      │ │
+│                              │          │ Window Size (W)   │               │ │ Right/bottom windows     │ │
+│                              │          └───────────────────┘               │ │ are truncated to bounds  │ │
+│                              │          Computes GLCM via                   │ └──────────────────────────┘ │
 └──────────────────────────────┘          skimage per step                    └──────────────────────────────┘
 ```
 
 1. **Quantization Baseline:** The pipeline extracts the single-band raster array (typically the Near-Infrared band) and casts it to an 8-bit unsigned integer array (`uint8`).
     
-2. **Sliding Window Trajectory:** A square window of user-defined size $W \times W$ slides across the image grid with a horizontal and vertical stride of 1 pixel.
+2. **Sliding Window Trajectory:** A square window of user-defined size $W \times W$ slides across the image grid with a horizontal and vertical stride of 1 pixel. The window is anchored at the current pixel $(i, j)$ and extends down and to the right.
     
 3. **Array Extraction:** For each window position, the local GLCM is extracted, normalized, and evaluated across the selected Haralick property configuration.
     
 4. **Output Matrix Offset:** The resulting scalar texture metric is written to the upper-left coordinate index $[i, j]$ of the active window position within the output array.
+    
+5. **Border Behavior:** Every output pixel is computed. Near the right and bottom edges the requested $W \times W$ window extends past the image, so NumPy slicing clips it to the remaining pixels (a truncated window). There is no padding, and border pixels are not left uninitialized. Top and left pixels still have a full window because the window extends inward from $(i, j)$.
 
 ### Interface Architecture
 
@@ -154,19 +156,15 @@ $$\text{window\_size} \ge 3$$
 
 The programmatic `_validate()` method enforces runtime constraints prior to code execution:
 
-1. Verifies that `window_size` is an integer type, a positive number, and an odd value.
+1. Verifies that `window_size` is an integer and an odd value greater than or equal to 3.
     
-2. Checks that `propery` is a valid string matching one of the six supported Haralick feature types.
+2. Checks that `propery` is a valid string matching one of the six supported Haralick feature types (`contrast`, `dissimilarity`, `homogeneity`, `ASM`, `energy`, `correlation`).
     
 3. Confirms that the target single-band file path exists and is readable.
 
 #### Return State (`process()`)
 
-Returns a 2D `numpy.ndarray` matching the original spatial dimensions of the input image. Valid calculated texture metrics occupy the upper-left processing region up to the boundary limits:
-
-$$\text{Shape Range} = [0 : \text{Width} - W + 1, \,\, 0 : \text{Height} - W + 1]$$
-
-Because the array is initialized using `np.empty()`, unreached border pixels near the right and bottom edges retain uninitialized floating-point values.
+Returns a 2D `numpy.ndarray` with the same `(height, width)` shape as the input image. Every pixel is assigned a texture value. Pixels whose $W \times W$ window would extend past the right or bottom edge are computed from the truncated in-bounds window rather than from padded or missing data.
 
 #### Operational Implementation
 
