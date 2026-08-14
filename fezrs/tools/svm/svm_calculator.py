@@ -94,7 +94,7 @@ class SVMCalculator(BaseTool):
 
         rgb = np.stack([red_normalized, green_normalized, blue_normalized], axis=2)
 
-        all_images = io.concatenate_images(self.collection_bands).transpose()
+        all_images = io.concatenate_images(self.collection_bands).transpose(1, 2, 0)
         all_image_reshape = all_images.reshape(
             (height * width, len(self.collection_bands))
         )
@@ -114,7 +114,7 @@ class SVMCalculator(BaseTool):
                 if self.index_loop < class_num * sample_num:
                     mylist = []
                     for j in self.collection_bands:
-                        mylist.append(j[x][y])
+                        mylist.append(j[y][x])
                     classes_df.iloc[self.index_loop, 0 : len(self.collection_bands)] = (
                         mylist
                     )
@@ -129,7 +129,7 @@ class SVMCalculator(BaseTool):
                     clf = svm.SVC(gamma="scale")
                     clf.fit(X, Y)
                     pred = clf.predict(all_image_reshape)
-                    svm_output = pred.reshape((height, width)).transpose()
+                    svm_output = pred.reshape((height, width))
                     self._output = svm_output
                     return self._output
 

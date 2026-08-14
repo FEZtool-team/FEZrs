@@ -31,7 +31,8 @@ class BaseTool(ABC):
         self._output = None
         self.__tool_name = self.__class__.__name__.replace("Calculator", "")
 
-        with resources.path("fezrs.media", "logo_watermark.png") as logo_path:
+        logo_resource = resources.files("fezrs.media").joinpath("logo_watermark.png")
+        with resources.as_file(logo_resource) as logo_path:
             logo_img = Image.open(logo_path).convert("RGBA")
             logo_img = logo_img.resize((80, 80))
 
