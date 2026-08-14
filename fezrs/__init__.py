@@ -53,6 +53,8 @@ from fezrs.tools.change_detection.magdir_calculator import MagDirCalculator
 from fezrs.tools.change_detection.subdiv_calculator import SubDivCalculator
 from fezrs.tools.change_detection.time_calculator import TimeCalculator
 
+from fezrs.tools.svm.svm_calculator import SVMCalculator
+
 
 __all__ = [
     "KMeansCalculator",
@@ -91,4 +93,5 @@ __all__ = [
     "MagDirCalculator",
     "SubDivCalculator",
     "TimeCalculator",
+    "SVMCalculator",
 ]

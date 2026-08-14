@@ -1,4 +1,4 @@
-# **FEZrs**    
+# **FEZrs**     
 
 [![DOI](https://zenodo.org/badge/710286874.svg)](https://doi.org/10.5281/zenodo.14938038) [![Tests](https://github.com/FEZtool-team/FEZrs/actions/workflows/FEZrs_Tests.yml/badge.svg?branch=main)](https://github.com/FEZtool-team/FEZrs/actions/workflows/FEZrs_Tests.yml) [![Documentation](https://img.shields.io/website?url=https%3A%2F%2Ffeztool-team.github.io%2FFEZdocs%2Flibraries%2Ffezrs%2F&label=docs)](https://feztool-team.github.io/FEZdocs/libraries/fezrs/) [![Downloads/month](https://static.pepy.tech/badge/fezrs/month)](https://pepy.tech/project/fezrs) [![PyPI version](https://img.shields.io/pypi/v/fezrs.svg)](https://pypi.org/project/fezrs/)
 [![Conda Version](https://img.shields.io/conda/vn/FEZtool/fezrs?label=Anaconda&color=orange&logo=anaconda)](https://anaconda.org/FEZtool/fezrs) ![License](https://img.shields.io/pypi/l/FEZrs) [![PyPI Downloads](https://static.pepy.tech/badge/fezrs)](https://pepy.tech/projects/fezrs) ![GitHub last commit](https://img.shields.io/github/last-commit/FEZtool-team/fezrs) [![Platform](https://img.shields.io/conda/pn/feztool/fezrs?color=blue&label=Platform&style=flat)](https://anaconda.org/feztool/fezrs) ![GitHub stars](https://img.shields.io/github/stars/FEZtool-team/FEZrs?style=social)
@@ -91,7 +91,7 @@ equalize.execute(output_path="./your/export/path")
 - `SpectralProfileCalculator`
 
 ## **Contributing**
-
+ 
 We welcome contributions! To contribute:
 
 1. Fork the repository

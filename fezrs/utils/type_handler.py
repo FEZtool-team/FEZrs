@@ -69,6 +69,8 @@ PropertyGLCMType = Literal[
     "ASM",
     "dissimilarity",
     "homogeneity",
+    "energy",
+    "correlation",
 ]
 """Type alias for supported GLCM property names."""
 
