@@ -159,9 +159,6 @@ def test_histogram_export_sets_title_correctly(mock_spectral_profile_calculator)
         patch(
             "fezrs.tools.spectral_profile.spectral_profile_calculator.plt.subplots"
         ) as mock_subplots,
-        patch(
-            "fezrs.tools.spectral_profile.spectral_profile_calculator.plt.title"
-        ) as mock_plt_title,
     ):
         mock_spectral_profile_calculator.xaxis = ["red", "green", "blue"]
         mock_spectral_profile_calculator.yaxis = [0.5, 0.6, 0.7]
@@ -176,7 +173,7 @@ def test_histogram_export_sets_title_correctly(mock_spectral_profile_calculator)
             grid=True,
         )
 
-        mock_plt_title.assert_called_once_with("My Spectral Analysis-FEZrs")
+        ax.set_title.assert_called_once_with("My Spectral Analysis-FEZrs")
 
 
 def test_execute_calls_base_execute(mock_spectral_profile_calculator):

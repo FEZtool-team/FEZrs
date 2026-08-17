@@ -3,7 +3,7 @@
 
 The `spectral_profile` module computes and visualizes the average spectral signatures across multi-spectral satellite image collections. In remote sensing, a **spectral profile** (or spectral signature) charts how a target surface reflects electromagnetic radiation across different wavelengths. This signature serves as a diagnostic fingerprint for characterizing dominant surface materials and evaluating radiometric variations between land-cover classes.
 
-This module unifies separate spectral bands—typically including the visible spectrum (**Red, Green, Blue**), Near-Infrared (**NIR**), and Short-Wave Infrared (**SWIR1, SWIR2**)—and aggregates their spatial grids. By extracting the mathematical mean of each band, the `SpectralProfileCalculator` produces a discrete line graph ($f(\text{band}) = \mu_{\text{band}}$) that captures the baseline radiometric identity of the entire scene.
+This module unifies separate spectral bands—typically including the visible spectrum (**Red, Green, Blue**), Near-Infrared (**NIR**), and Short-Wave Infrared (**SWIR1, SWIR2**)—and aggregates their spatial grids. By extracting the mathematical mean of each band, the `SpectralProfileCalculator` produces a discrete line graph ($f(\text{band}) = \mu_{\text{band}}$) that captures the baseline radiometric identity of the entire scene. Call `histogram_export()` to write that line graph. `execute()` exports a log-stretched preview of one input band, not the profile itself.
 
 ```
        [6 Ingested Single-Band Layers] (Red, Green, Blue, NIR, SWIR1, SWIR2)

@@ -1,4 +1,5 @@
 from uuid import uuid4
+from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
@@ -43,6 +44,8 @@ class HistogramExportMixin:
         Returns:
             The path to the saved image file.
         """
+        output_path = Path(output_path)
+        output_path.mkdir(parents=True, exist_ok=True)
         filename = f"{output_path}/{filename_prefix}_{uuid4().hex}.png"
         ax.figure.savefig(filename, dpi=dpi, bbox_inches=bbox_inches)
         plt.close(ax.figure)
