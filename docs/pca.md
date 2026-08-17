@@ -127,7 +127,9 @@ These higher-order components capture progressively smaller variations in the da
         
     - `swir2_path` (`str` | `Path`): File path to the Short-Wave Infrared 2 band raster layer.
         
-    - `selectBand` (`Literal["red","green","blue","nir","swir1","swir2", None]`): Optional parameter. Selects a specific input band to map against the component outputs during specialized diagnostic profiling.
+    - `component` (`int` | `None`): Optional 1-based principal-component index (`1`–`6`) used by `histogram_export()`.
+        
+    - `selectBand` (`Literal["red","green","blue","nir","swir1","swir2", None]`): Deprecated alias. These names do **not** select an input band; they map to a component index in collection order (`red→PC1`, `nir→PC2`, …). Prefer `component`. After `process()`, `explained_variance_ratio` returns the six-element variance-share vector.
 
 #### Processing Pipeline Lifecycle (`process()`)
 
@@ -164,7 +166,8 @@ pca_transformer = PCACalculator(
     blue_path=Path("./landsat/LC08_B02_Blue.tif"),
     nir_path=Path("./landsat/LC08_B05_NIR.tif"),
     swir1_path=Path("./landsat/LC08_B06_SWIR1.tif"),
-    swir2_path=Path("./landsat/LC08_B07_SWIR2.tif")
+    swir2_path=Path("./landsat/LC08_B07_SWIR2.tif"),
+    component=1,
 )
 
 # Run the SVD engine, construct diagnostic histograms, and save the 6-panel visualization layout

@@ -1,4 +1,5 @@
 from uuid import uuid4
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,6 +21,7 @@ class PCACalculator(BaseTool, HistogramExportMixin):
         swir1_path: BandPathType,
         swir2_path: BandPathType,
         selectBand: BandNamePCAType | None = None,
+        component: int | None = None,
     ):
         super().__init__(
             red_path=red_path,
@@ -48,11 +50,11 @@ class PCACalculator(BaseTool, HistogramExportMixin):
         )
 
         self.selectBand = selectBand
+        self.component = component
 
-        # Input band order.
-        #
-        # This order MUST match the order returned by
-        # files_handler.get_images_collection().
+        # Legacy name-to-index map used only when selectBand is supplied.
+        # These names do not correspond to input bands; they index principal
+        # components in collection order. Prefer `component` (1-based).
         self.bindTheBandsToNumber = {
             "red": 0,
             "nir": 1,
@@ -99,6 +101,13 @@ class PCACalculator(BaseTool, HistogramExportMixin):
             raise ValueError(
                 f"Missing required PCA bands: {missing_bands}"
             )
+
+        component = getattr(self, "component", None)
+        if component is not None:
+            if not isinstance(component, int) or isinstance(component, bool):
+                raise ValueError("component must be an int from 1 to 6.")
+            if component < 1 or component > 6:
+                raise ValueError("component must be an int from 1 to 6.")
 
         if self.selectBand is not None:
             if self.selectBand not in self.bindTheBandsToNumber:
@@ -197,6 +206,35 @@ class PCACalculator(BaseTool, HistogramExportMixin):
 
         return self._output
 
+    @property
+    def explained_variance_ratio(self):
+        """Proportion of variance explained by each principal component."""
+        pca = getattr(self, "_pca", None)
+        if pca is None:
+            raise ValueError("PCA has not been computed. Call process() first.")
+        return pca.explained_variance_ratio_
+
+    def _resolve_component_index(self) -> int:
+        component = getattr(self, "component", None)
+        if component is not None:
+            return component - 1
+
+        if self.selectBand is None:
+            raise ValueError(
+                "You cannot use histogram_export() without "
+                "passing selectBand."
+            )
+
+        warnings.warn(
+            "selectBand maps to a principal-component index, not an input "
+            f"band. {self.selectBand!r} currently selects component "
+            f"{self.bindTheBandsToNumber[self.selectBand] + 1}. "
+            "Pass component=N (1-based) instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        return self.bindTheBandsToNumber[self.selectBand]
+
     def _customize_export_file(self, ax):
         pass
 
@@ -210,9 +248,7 @@ class PCACalculator(BaseTool, HistogramExportMixin):
         bbox_inches: str = "tight",
         grid: bool = True,
     ):
-        
-
-        if self.selectBand is None:
+        if self.selectBand is None and getattr(self, "component", None) is None:
             raise ValueError(
                 "You cannot use histogram_export() without "
                 "passing selectBand."
@@ -220,12 +256,10 @@ class PCACalculator(BaseTool, HistogramExportMixin):
 
         self._validate()
 
-        if not hasattr(self, "_output"):
+        if self._output is None:
             self.process()
 
-        component_index = self.bindTheBandsToNumber[
-            self.selectBand
-        ]
+        component_index = self._resolve_component_index()
 
         pca_component = self._output[component_index]
 
@@ -240,8 +274,7 @@ class PCACalculator(BaseTool, HistogramExportMixin):
         )
 
         ax.set_title(
-            f"Histogram of PCA Band "
-            f"{self.selectBand.capitalize()}"
+            f"Histogram of Principal Component {component_index + 1}"
         )
 
         if title:

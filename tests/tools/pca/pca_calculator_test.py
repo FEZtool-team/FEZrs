@@ -84,6 +84,7 @@ def mock_pca_calculator():
         self.metadata_bands = fake_metadata
         self.image_shape = (height, width)
         self.selectBand = kwargs.get("selectBand")
+        self.component = kwargs.get("component")
 
         self._logo_watermark = None
 
@@ -255,3 +256,41 @@ def test_execute(mock_pca_calculator):
 
     assert result is mock_pca_calculator
     mock_execute.assert_called_once()
+
+
+def test_histogram_export_runs_process_when_output_is_none(
+    mock_pca_calculator, tmp_path
+):
+    assert mock_pca_calculator._output is None
+
+    with patch.object(mock_pca_calculator, "_save_histogram_figure"):
+        with patch.object(mock_pca_calculator, "_add_watermark"):
+            mock_pca_calculator.histogram_export(output_path=tmp_path / "pca")
+
+    assert mock_pca_calculator._output is not None
+    assert mock_pca_calculator._output.shape == (N_BANDS, HEIGHT, WIDTH)
+
+
+def test_histogram_export_accepts_component(mock_pca_calculator, tmp_path):
+    mock_pca_calculator.selectBand = None
+    mock_pca_calculator.component = 1
+
+    with patch.object(
+        mock_pca_calculator, "_save_histogram_figure"
+    ) as mock_save:
+        with patch.object(mock_pca_calculator, "_add_watermark"):
+            mock_pca_calculator.histogram_export(output_path=tmp_path / "pca")
+
+    mock_save.assert_called_once()
+
+
+def test_explained_variance_ratio_requires_process(mock_pca_calculator):
+    with pytest.raises(ValueError, match="PCA has not been computed"):
+        _ = mock_pca_calculator.explained_variance_ratio
+
+
+def test_explained_variance_ratio_after_process(mock_pca_calculator):
+    mock_pca_calculator.process()
+    ratio = mock_pca_calculator.explained_variance_ratio
+    assert ratio.shape == (N_BANDS,)
+    np.testing.assert_allclose(ratio.sum(), 1.0, atol=1e-6)
