@@ -1,14 +1,18 @@
 from pathlib import Path
 from fezrs import PCACalculator
 
+ROOT = Path(__file__).resolve().parent
+DATA = ROOT / "data"
+OUT = ROOT / "outputs" / "pca"
+
 PCACalculator(
-    blue_path= Path.cwd() / "./example/data/blue.tif",
-    green_path= Path.cwd() / "./example/data/green.tif",
-    red_path= Path.cwd() / "./example/data/red.tif",
-    nir_path= Path.cwd() / "./example/data/nir.tif",
-    swir1_path= Path.cwd() / "./example/data/swir_1.tif",
-    swir2_path= Path.cwd() / "./example/data/swir_2.tif",
-    selectBand="blue",
+    blue_path=DATA / "blue.tif",
+    green_path=DATA / "green.tif",
+    red_path=DATA / "red.tif",
+    nir_path=DATA / "nir.tif",
+    swir1_path=DATA / "swir_1.tif",
+    swir2_path=DATA / "swir_2.tif",
+    component=1,
 ).execute(
-    output_path=Path.cwd() /"./example/outputs/pca",
-).histogram_export(output_path=Path.cwd() /"./example/outputs/pca")
+    output_path=OUT,
+).histogram_export(output_path=OUT)

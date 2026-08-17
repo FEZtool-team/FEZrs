@@ -1,3 +1,4 @@
+from pathlib import Path
 from fezrs import (
     GaussianCalculator,
     LaplacianCalculator,
@@ -6,24 +7,28 @@ from fezrs import (
     SobelCalculator,
 )
 
+ROOT = Path(__file__).resolve().parent
+PAN = ROOT / "data" / "pan_img.tif"
+OUT = ROOT / "outputs" / "filter"
+
 GaussianCalculator(
-    tif_path="./data/pan_img.tif",
+    tif_path=PAN,
 ).execute(
-    output_path="./outputs/filter",
+    output_path=OUT,
 )
 
-LaplacianCalculator(tif_path="./data/pan_img.tif", kernel_size=7).execute(
-    output_path="./outputs/filter",
+LaplacianCalculator(tif_path=PAN, kernel_size=7).execute(
+    output_path=OUT,
 )
 
-MeanCalculator(tif_path="./data/pan_img.tif").execute(
-    output_path="./outputs/filter",
+MeanCalculator(tif_path=PAN).execute(
+    output_path=OUT,
 )
 
-MedianCalculator(tif_path="./data/pan_img.tif", kernel_size=5).execute(
-    output_path="./outputs/filter",
+MedianCalculator(tif_path=PAN, kernel_size=5).execute(
+    output_path=OUT,
 )
 
-SobelCalculator(tif_path="./data/pan_img.tif", kernel_size=7).execute(
-    output_path="./outputs/filter",
+SobelCalculator(tif_path=PAN, kernel_size=7).execute(
+    output_path=OUT,
 )
