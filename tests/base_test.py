@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -90,3 +92,88 @@ def test_execute_returns_self():
     result = tool.execute(".")
 
     assert result is tool
+
+
+def test_export_file_honors_filename_prefix(tmp_path):
+    tool = DummyExportTool()
+    tool._output = np.array([[1, 2], [3, 4]])
+
+    filename = tool._export_file(tmp_path, filename_prefix="mine")
+
+    assert Path(filename).name.startswith("mine_output_")
+
+
+def test_export_raster_writes_geotiff(tmp_path):
+    import rasterio
+
+    reference = tmp_path / "ref.tif"
+    data = np.array([[10, 20], [30, 40]], dtype=np.float32)
+    transform = rasterio.transform.from_origin(10, 20, 1, 1)
+    with rasterio.open(
+        reference,
+        "w",
+        driver="GTiff",
+        height=2,
+        width=2,
+        count=1,
+        dtype="float32",
+        crs="EPSG:4326",
+        transform=transform,
+    ) as dst:
+        dst.write(data, 1)
+
+    class RasterTool(DummyExportTool):
+        def __init__(self):
+            super().__init__()
+            self.files_handler = type(
+                "Handler",
+                (),
+                {
+                    "band_paths": {"nir": str(reference)},
+                    "tif_paths": None,
+                },
+            )()
+
+    tool = RasterTool()
+    tool._output = data * 2
+
+    dest = tool.export_raster(tmp_path, filename="result.tif")
+
+    assert dest.exists()
+    with rasterio.open(dest) as src:
+        np.testing.assert_array_equal(src.read(1), data * 2)
+        assert src.crs.to_epsg() == 4326
+        assert src.transform == transform
+
+
+def test_export_raster_writes_bool_and_multiband(tmp_path):
+    import rasterio
+
+    class RasterTool(DummyExportTool):
+        def __init__(self):
+            super().__init__()
+            self.files_handler = type(
+                "Handler",
+                (),
+                {"band_paths": {}, "tif_paths": None},
+            )()
+
+    tool = RasterTool()
+    tool._output = np.array([[True, False], [False, True]])
+    dest = tool.export_raster(tmp_path, filename="mask.tif")
+    with rasterio.open(dest) as src:
+        assert src.count == 1
+        np.testing.assert_array_equal(src.read(1), [[1, 0], [0, 1]])
+
+    tool._output = np.ones((3, 2, 2), dtype=np.float32)
+    dest = tool.export_raster(tmp_path, filename="stack.tif")
+    with rasterio.open(dest) as src:
+        assert src.count == 3
+        assert src.read().shape == (3, 2, 2)
+
+
+def test_export_file_sets_title(tmp_path):
+    tool = DummyExportTool()
+    tool._output = np.array([[1, 2], [3, 4]])
+    filename = tool._export_file(tmp_path, title="Demo")
+    assert Path(filename).exists()

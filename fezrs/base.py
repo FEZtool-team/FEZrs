@@ -4,7 +4,9 @@ from PIL import Image
 from pathlib import Path
 from uuid import uuid4
 from importlib import resources
+import numpy as np
 import matplotlib.pyplot as plt
+import rasterio
 
 
 # Import module and files
@@ -101,7 +103,8 @@ class BaseTool(ABC):
         Returns:
             The path to the saved image file.
         """
-        filename_prefix = self.__tool_name
+        if filename_prefix == "Tool_output":
+            filename_prefix = self.__tool_name
 
         # Check output property is not empty
         if self._output is None:
@@ -110,6 +113,9 @@ class BaseTool(ABC):
         # Check the output path is exist and if not create that directory(ies)
         output_path = Path(output_path)
         output_path.mkdir(parents=True, exist_ok=True)
+
+        nrows = 1 if nrows is None else nrows
+        ncols = 1 if ncols is None else ncols
 
         # Run plot methods
         fig, ax = plt.subplots(figsize=figsize, nrows=nrows, ncols=ncols)
@@ -184,5 +190,97 @@ class BaseTool(ABC):
             dpi,
             bbox_inches,
             grid,
+            1 if nrows is None else nrows,
+            1 if ncols is None else ncols,
         )
         return self
+
+    def _reference_raster_path(self) -> Path | None:
+        """Return the first available input raster path, if any."""
+        files_handler = getattr(self, "files_handler", None)
+        if files_handler is None:
+            return None
+
+        band_paths = getattr(files_handler, "band_paths", None) or {}
+        for path in band_paths.values():
+            if path and Path(path).is_file():
+                return Path(path)
+
+        tif_paths = getattr(files_handler, "tif_paths", None) or []
+        for path in tif_paths:
+            if path and Path(path).is_file():
+                return Path(path)
+
+        return None
+
+    def _raster_write_stack(self) -> np.ndarray:
+        """
+        Prepare ``self._output`` as a band-first array of shape (count, height, width).
+        """
+        data = np.asarray(self._output)
+        if data.ndim == 2:
+            return data[np.newaxis, ...]
+        if data.ndim != 3:
+            raise ValueError(
+                f"Cannot export array of shape {data.shape} as a GeoTIFF."
+            )
+
+        # Scientific outputs (PCA, stacked indices) are band-first:
+        # (bands, height, width). RGB previews are channel-last:
+        # (height, width, 3|4). Treat the last axis as channels only when
+        # it looks like RGB/RGBA and the first axis is spatial.
+        if data.shape[-1] in (3, 4) and data.shape[0] > 4:
+            return np.moveaxis(data, -1, 0)
+        return data
+
+    def export_raster(
+        self,
+        output_path: BandPathType,
+        filename: str | None = None,
+    ) -> Path:
+        """
+        Export the computed output as a GeoTIFF, copying georeferencing from
+        the first available input raster when one exists.
+
+        Args:
+            output_path: Directory to save the exported raster.
+            filename: Optional output filename. Defaults to
+                ``{tool}_output_{uuid}.tif``.
+
+        Returns:
+            The path to the saved GeoTIFF.
+        """
+        if self._output is None:
+            raise ValueError("Data not computed.")
+
+        output_path = Path(output_path)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        if filename is None:
+            filename = f"{self.__tool_name}_output_{uuid4().hex}.tif"
+        dest = output_path / filename
+
+        write_data = self._raster_write_stack()
+        if write_data.dtype == np.bool_:
+            write_data = write_data.astype(np.uint8)
+
+        profile = {
+            "driver": "GTiff",
+            "height": int(write_data.shape[1]),
+            "width": int(write_data.shape[2]),
+            "count": int(write_data.shape[0]),
+            "dtype": write_data.dtype.name,
+            "compress": "lzw",
+        }
+
+        reference = self._reference_raster_path()
+        if reference is not None:
+            with rasterio.open(reference) as src:
+                profile.update(crs=src.crs, transform=src.transform)
+                if src.nodata is not None:
+                    profile["nodata"] = src.nodata
+
+        with rasterio.open(dest, "w", **profile) as dst:
+            dst.write(write_data)
+
+        return dest
