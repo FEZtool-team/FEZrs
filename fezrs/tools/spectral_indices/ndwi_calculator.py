@@ -15,7 +15,8 @@ class NDWICalculator(BaseTool):
         green_path: BandPathType,
     ):
         super().__init__(nir_path=nir_path, green_path=green_path)
-        self.normalized_bands = self.files_handler.get_normalized_bands(
+        # Raw band values. The attribute name is kept for backward compatibility.
+        self.normalized_bands = self.files_handler.get_bands(
             requested_bands=["nir", "green"]
         )
 

@@ -15,7 +15,8 @@ class UICalculator(BaseTool):
         swir2_path: BandPathType,
     ):
         super().__init__(nir_path=nir_path, swir2_path=swir2_path)
-        self.normalized_bands = self.files_handler.get_normalized_bands(
+        # Raw band values. The attribute name is kept for backward compatibility.
+        self.normalized_bands = self.files_handler.get_bands(
             requested_bands=["nir", "swir2"]
         )
 

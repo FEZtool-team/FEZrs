@@ -111,6 +111,9 @@ class FileHandler:
             A dictionary mapping band names to their loaded image data as NumPy arrays.
 
     Methods:
+        get_bands(requested_bands: Optional[List[BandNameType]] = None) -> Dict[str, Optional[np.ndarray]]:
+            Retrieve the requested image bands as loaded, without rescaling.
+
         get_normalized_bands(requested_bands: Optional[List[BandNameType]] = None) -> Dict[str, Optional[np.ndarray]]:
             Retrieve normalized versions of the requested image bands. If no bands are specified, all available bands are normalized.
 
@@ -175,11 +178,35 @@ class FileHandler:
             key: _load_image(path) for key, path in self.band_paths.items()
         }
 
+    def get_bands(self, requested_bands: Optional[List[BandNameType]] = None):
+        """
+        Retrieve the requested image bands as loaded, without rescaling.
+
+        Args:
+            requested_bands (Optional[List[BandNameType]]): A list of band names to return.
+                If None, all available bands are returned.
+
+        Returns:
+            Dict[str, Optional[np.ndarray]]: A dictionary mapping band names to their
+                raw image data. Bands with no data are excluded.
+        """
+        if requested_bands is None:
+            requested_bands = list(self.bands.keys())
+
+        return {
+            band: self.bands[band]
+            for band in requested_bands
+            if self.bands.get(band) is not None
+        }
+
     def get_normalized_bands(
         self, requested_bands: Optional[List[BandNameType]] = None
     ):
         """
-        Retrieve normalized versions of the requested image bands.
+        Retrieve min–max normalized versions of the requested image bands.
+
+        Use this for visualization and enhancement tools. Spectral indices and
+        other physically defined calculations should use ``get_bands()`` instead.
 
         Args:
             requested_bands (Optional[List[BandNameType]]): A list of band names to normalize.

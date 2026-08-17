@@ -1,7 +1,7 @@
 # Spectral Indices
 ## Overview
 
-The `indices` module provides algebraic raster calculation pipelines designed to extract quantitative geophysical properties from multi-spectral satellite imagery. Every target surface feature exhibits a unique **spectral signature**—a characteristic pattern of electromagnetic radiation reflection and absorption across different wavelengths.
+The `spectral_indices` module provides algebraic raster calculation pipelines designed to extract quantitative geophysical properties from multi-spectral satellite imagery. Every target surface feature exhibits a unique **spectral signature**—a characteristic pattern of electromagnetic radiation reflection and absorption across different wavelengths.
 
 By calculating normalized differences, empirical scaling offsets, and non-linear band ratios, these calculators isolate specific surface materials, such as chlorophyll-heavy plant canopies, exposed mineral soils, open water bodies, and artificial urban structures.
 
@@ -17,7 +17,7 @@ By calculating normalized differences, empirical scaling offsets, and non-linear
                                     │
                                     ▼
                     ┌────────────────────────────────┐
-                    │ Linear Quantization Scaling    │ ──► $I_{\text{norm}} \in [0.0, 1.0]$
+                    │ Raw band values as loaded      │ ──► no per-band min–max rescale
                     └───────────────┬────────────────┘
                                     │
          ┌──────────────────────────┴──────────────────────────┐
@@ -44,7 +44,7 @@ The NDVI is the standard index used to evaluate the presence, structural density
 
 #### Mathematical Formulation
 
-The mathematical index uses a normalized difference ratio:
+The mathematical index uses a normalized difference ratio computed on the input band values **as read** (digital numbers or reflectance). Bands are not min–max normalized before the ratio, so published NDVI thresholds remain comparable and a pixel's value does not depend on the spatial extent that was loaded.
 
 $$\text{NDVI} = \frac{\text{NIR} - \text{Red}}{\text{NIR} + \text{Red}}$$
 
@@ -89,15 +89,15 @@ The AFRI is designed to map dense forest canopies and high-biomass woody vegetat
 
 #### Mathematical Formulation
 
-The calculation separates the input into two distinct, interacting factors:
+The implementation follows Karnieli et al. (2001) for $\text{AFRI}_{1.6}$. The coefficient $0.66$ scales the SWIR1.6 reflectance because of the empirical relationship $\rho_{0.645} \approx 0.66 \cdot \rho_{1.6}$; it is not subtracted from NIR as a bare constant.
 
-$$\text{AFRI} = (\text{NIR} - 0.66) \times \left( \frac{\text{SWIR1}}{\text{NIR} + 0.66 \times \text{SWIR1}} \right)$$
+$$\text{AFRI}_{1.6} = \frac{\text{NIR} - 0.66 \times \text{SWIR1}}{\text{NIR} + 0.66 \times \text{SWIR1}}$$
 
 #### Biophysical Interaction Properties
 
-- **NIR Offset Constant ($\text{NIR} - 0.66$):** Dense, healthy forest canopies consistently exhibit high near-infrared reflectance. The empirical constant **0.66** serves as a structural threshold; pixels with low near-infrared values (such as open water, shadows, or asphalt) produce negative or near-zero results, effectively suppressing non-vegetated features.
-    
-- **Non-Linear Modulation Ratio:** The second term uses the short-wave infrared band ($\text{SWIR1}$) to modulate the index response. Because moisture-rich forest leaf canopies absorb $\text{SWIR1}$ energy while reflecting $\text{NIR}$, this ratio stays small but positive for healthy forests. This dampens variations caused by topographic shadows, ensuring consistent canopy mapping across rugged terrain.
+Under clear-sky conditions Karnieli et al. (2001) report that $\text{AFRI}_{1.6}$ closely resembles NDVI. The SWIR1 term reduces sensitivity to smoke, haze, and dust relative to a visible-red vegetation index, while the $0.66$ scaling keeps the index numerically comparable to NDVI when the input bands are reflectance (or linearly related digital numbers).
+
+The documented output range is $[-1.0, +1.0]$, the same bounds as a normalized-difference index.
 
 ### `NDWICalculator` (Normalized Difference Water Index)
 
@@ -124,6 +124,8 @@ In contrast, land features like healthy vegetation or dry soils reflect much mor
 #### Scientific and Physical Objective
 
 The Bare Soil Index isolates exposed soil surfaces, agricultural fallow fields, mining areas, and bare rock outcroppings by contrasting visible light combinations with near-infrared reflectance.
+
+This is the FEZrs brightness/soil-contrast formulation. It is **not** the Enhanced Built-Up and Bareness Index (EBBI) of As-Syakur et al. (2012), which uses SWIR, NIR, and a thermal band.
 
 #### Mathematical Formulation
 
@@ -163,7 +165,7 @@ The following matrix cross-references the required sensor channels, target range
 |---|---|---|---|---|---|---|
 |**`NDVICalculator`**|Canopy Health & Density|$\frac{\text{NIR} - \text{Red}}{\text{NIR} + \text{Red}}$|$[-1.0, \,\, +1.0]$|B5, B4|B8, B4|`'RdYlGn'` / `'YlGn'`|
 |**`SAVICalculator`**|Sparse / Arid Shrublands|$\frac{\text{NIR} - \text{Red}}{\text{NIR} + \text{Red} + 0.5} \times 1.5$|$[-1.0, \,\, +1.0]$|B5, B4|B8, B4|`'RdYlGn'` / `'YlGn'`|
-|**`AFRICalculator`**|Dense / Woody Forests|$(\text{NIR} - 0.66) \times \frac{\text{SWIR1}}{\text{NIR} + 0.66 \cdot \text{SWIR1}}$|$[0.0, \,\, +1.0]$|B5, B6|B8, B11|`'YlGn'`|
+|**`AFRICalculator`**|Dense / Woody Forests|$\frac{\text{NIR} - 0.66 \cdot \text{SWIR1}}{\text{NIR} + 0.66 \cdot \text{SWIR1}}$|$[-1.0, \,\, +1.0]$|B5, B6|B8, B11|`'YlGn'`|
 |**`NDWICalculator`**|Water Bodies & Hydrology|$\frac{\text{Green} - \text{NIR}}{\text{Green} + \text{NIR}}$|$[-1.0, \,\, +1.0]$|B3, B5|B3, B8|`'Blues'`|
 |**`BICalculator`**|Bare Soil & Exposed Rock|$\frac{\text{NIR} - \text{Green} - \text{Red}}{\text{NIR} + \text{Green} + \text{Red}}$|$[-1.0, \,\, +1.0]$|B5, B4, B3|B8, B4, B3|`'inferno'` / `'hot'`|
 |**`UICalculator`**|Built-up Urban Areas|$\frac{\text{SWIR2} - \text{NIR}}{\text{SWIR2} + \text{NIR}}$|$[-1.0, \,\, +1.0]$|B7, B5|B12, B8|`'coolwarm'`|
@@ -174,7 +176,7 @@ The following matrix cross-references the required sensor channels, target range
 
 ```Python
 from pathlib import Path
-from fezrs.tools.indices import NDVICalculator
+from fezrs import NDVICalculator
 
 # Instantiate the NDVI processing engine using Landsat 8 paths
 ndvi_engine = NDVICalculator(
@@ -195,7 +197,7 @@ ndvi_engine.execute(
 
 ```Python
 from pathlib import Path
-from fezrs.tools.indices import NDWICalculator
+from fezrs import NDWICalculator
 
 # Instantiate McFeeters NDWI calculator using Sentinel-2 paths
 ndwi_engine = NDWICalculator(

@@ -15,6 +15,7 @@ def mock_afri_calculator():
     }
 
     fake_files_handler = MagicMock()
+    fake_files_handler.get_bands.return_value = fake_normalized_bands
     fake_files_handler.get_normalized_bands.return_value = fake_normalized_bands
 
     def fake_init(self, *args, **kwargs):
@@ -53,7 +54,7 @@ def test_process_calculates_afri_correctly(mock_afri_calculator):
 
     nir = mock_afri_calculator.normalized_bands["nir"]
     swir1 = mock_afri_calculator.normalized_bands["swir1"]
-    expected = (nir - 0.66) * (swir1 / (nir + (0.66 * swir1)))
+    expected = (nir - 0.66 * swir1) / (nir + 0.66 * swir1)
 
     result = mock_afri_calculator.process()
 

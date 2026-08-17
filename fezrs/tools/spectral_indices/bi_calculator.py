@@ -13,7 +13,8 @@ class BICalculator(BaseTool):
         green_path: BandPathType,
     ):
         super().__init__(nir_path=nir_path, red_path=red_path, green_path=green_path)
-        self.normalized_bands = self.files_handler.get_normalized_bands(
+        # Raw band values. The attribute name is kept for backward compatibility.
+        self.normalized_bands = self.files_handler.get_bands(
             requested_bands=["nir", "red", "green"]
         )
 

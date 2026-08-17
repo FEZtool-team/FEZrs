@@ -16,6 +16,7 @@ def mock_ndwi_calculator():
     }
 
     fake_files_handler = MagicMock()
+    fake_files_handler.get_bands.return_value = fake_normalized_bands
     fake_files_handler.get_normalized_bands.return_value = fake_normalized_bands
 
     def fake_init(self, *args, **kwargs):
