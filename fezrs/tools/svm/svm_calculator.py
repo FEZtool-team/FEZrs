@@ -1,3 +1,5 @@
+import os
+import sys
 import cv2
 import itertools
 import numpy as np
@@ -7,6 +9,13 @@ from skimage import io
 from sklearn import svm
 from fezrs.base import BaseTool
 from fezrs.utils.type_handler import BandPathType
+
+
+def _display_available() -> bool:
+    """Return True when an interactive display appears to be available."""
+    if sys.platform.startswith("win") or sys.platform == "darwin":
+        return True
+    return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
 
 
 class SVMCalculator(BaseTool):
@@ -20,6 +29,7 @@ class SVMCalculator(BaseTool):
         swir2_path: BandPathType,
         class_number: int = 4,
         sample_number: int = 10,
+        training_samples=None,
     ):
         super().__init__(
             red_path=red_path,
@@ -41,6 +51,7 @@ class SVMCalculator(BaseTool):
 
         self.class_number = class_number
         self.sample_number = sample_number
+        self.training_samples = training_samples
 
     def _validate(self) -> None:
         # 1) class_number: must be an int ≥ 2 (at least binary classification)
@@ -81,23 +92,73 @@ class SVMCalculator(BaseTool):
                 f"Warning: selecting {requested_samples} pixels manually may be impractical."
             )
 
+    def _scene_features(self):
+        width = self.metadata_shape["blue"]["width"]
+        height = self.metadata_shape["blue"]["height"]
+        all_images = io.concatenate_images(self.collection_bands).transpose(1, 2, 0)
+        features = all_images.reshape((height * width, len(self.collection_bands)))
+        return height, width, features
+
+    def _fit_and_predict(self, samples, labels):
+        height, width, features = self._scene_features()
+        clf = svm.SVC(gamma="scale")
+        clf.fit(samples, labels)
+        pred = clf.predict(features)
+        self._output = pred.reshape((height, width))
+        return self._output
+
+    def _process_from_samples(self):
+        height = self.metadata_shape["blue"]["height"]
+        width = self.metadata_shape["blue"]["width"]
+        samples = list(self.training_samples)
+
+        if len(samples) < 2:
+            raise ValueError("training_samples must contain at least two samples.")
+
+        rows, cols, labels = [], [], []
+        for item in samples:
+            if len(item) != 3:
+                raise ValueError(
+                    "Each training sample must be (row, col, class_id)."
+                )
+            row, col, class_id = item
+            if not (0 <= int(row) < height and 0 <= int(col) < width):
+                raise ValueError(
+                    f"Sample ({row}, {col}) is outside the image bounds "
+                    f"({height}, {width})."
+                )
+            rows.append(int(row))
+            cols.append(int(col))
+            labels.append(int(class_id))
+
+        if len(set(labels)) < 2:
+            raise ValueError("training_samples must include at least two classes.")
+
+        training_x = np.array(
+            [[band[row, col] for band in self.collection_bands] for row, col in zip(rows, cols)]
+        )
+        return self._fit_and_predict(training_x, np.asarray(labels, dtype=int))
+
     def process(self):
 
         self._validate()
+
+        if getattr(self, "training_samples", None) is not None:
+            return self._process_from_samples()
+
+        if not _display_available():
+            raise RuntimeError(
+                "SVMCalculator requires a display for interactive sample "
+                "collection, or pass training_samples=[(row, col, class_id), ...] "
+                "for headless use."
+            )
 
         red_normalized = self.normalized_bands["red"]
         green_normalized = self.normalized_bands["green"]
         blue_normalized = self.normalized_bands["blue"]
 
-        width = self.metadata_shape["blue"]["width"]
-        height = self.metadata_shape["blue"]["height"]
-
         rgb = np.stack([red_normalized, green_normalized, blue_normalized], axis=2)
-
-        all_images = io.concatenate_images(self.collection_bands).transpose(1, 2, 0)
-        all_image_reshape = all_images.reshape(
-            (height * width, len(self.collection_bands))
-        )
+        _height, _width, all_image_reshape = self._scene_features()
 
         class_num = self.class_number
         sample_num = self.sample_number
@@ -125,12 +186,7 @@ class SVMCalculator(BaseTool):
                     array = classes_df.values
                     X = array[:, 0 : len(self.collection_bands)]
                     Y = array[:, len(self.collection_bands)].astype("int")
-
-                    clf = svm.SVC(gamma="scale")
-                    clf.fit(X, Y)
-                    pred = clf.predict(all_image_reshape)
-                    svm_output = pred.reshape((height, width))
-                    self._output = svm_output
+                    self._fit_and_predict(X, Y)
                     return self._output
 
         cv2.namedWindow("mouseClick", cv2.WINDOW_NORMAL)
@@ -142,7 +198,14 @@ class SVMCalculator(BaseTool):
                 break
 
         cv2.destroyAllWindows()
-        return
+
+        if not self.is_finished_click_event:
+            raise RuntimeError(
+                "Sample collection was interrupted before all training "
+                "samples were collected. Pass training_samples=... for a "
+                "non-interactive run."
+            )
+        return self._output
 
     def _export_file(
         self,

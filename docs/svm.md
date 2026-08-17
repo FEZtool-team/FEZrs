@@ -104,9 +104,11 @@ $$\hat{y} = \arg\max_{k \in \{1, \dots, K\}} \sum_{m=1}^{K(K-1)/2} \mathbb{I}\le
     
 - `nir_path`, `swir1_path`, `swir2_path` (`str` | `Path`): File paths to the remaining infrared bands, providing the additional dimensions for the 6D feature space.
     
-- `class_number` (`int`, default=`4`): Total number of discrete land-cover categories to classify ($K \ge 2$).
+- `class_number` (`int`, default=`4`): Total number of discrete land-cover categories to classify ($K \ge 2$). Used by the interactive click workflow.
     
-- `sample_number` (`int`, default=`10`): Number of training pixels to collect per class ($\ge 1$).
+- `sample_number` (`int`, default=`10`): Number of training pixels to collect per class ($\ge 1$). Used by the interactive click workflow.
+    
+- `training_samples` (`list[tuple[int, int, int]]` | `None`): Optional non-interactive training set. Each item is `(row, col, class_id)` in NumPy image coordinates (`row` is y, `col` is x). When this argument is provided the OpenCV window is not opened, so the tool can run headlessly and the training set is reproducible.
 
 #### Interactive Sample Collection Workflow
 
@@ -132,9 +134,9 @@ Returns a 2D `numpy.ndarray` of shape `(Height, Width)` containing integer class
 
 ```Python
 from pathlib import Path
-from fezrs.tools.svm import SVMCalculator
+from fezrs import SVMCalculator
 
-# Instantiate the interactive SVM classification engine
+# Headless, reproducible training from known pixel coordinates
 classifier = SVMCalculator(
     red_path=Path("./imagery/Landsat_B4.tif"),
     green_path=Path("./imagery/Landsat_B3.tif"),
@@ -142,21 +144,26 @@ classifier = SVMCalculator(
     nir_path=Path("./imagery/Landsat_B5.tif"),
     swir1_path=Path("./imagery/Landsat_B6.tif"),
     swir2_path=Path("./imagery/Landsat_B7.tif"),
-    class_number=4,   # E.g., Class 1: Water, 2: Forest, 3: Urban, 4: Soil
-    sample_number=12  # Collect 12 clicked pixel locations for each class
+    training_samples=[
+        (10, 20, 1),  # water
+        (12, 22, 1),
+        (80, 40, 2),  # forest
+        (82, 41, 2),
+    ],
 )
 
-# Run the tool: this launches the GUI window, trains the model, and exports the final map
 thematic_map = classifier.execute(
     output_path="./exports/classification/",
     title="SVM_Land_Cover_Map",
-    colormap="tab10"
+    colormap="tab10",
 )
+# Optional: write a georeferenced GeoTIFF of the class map
+classifier.export_raster("./exports/classification/", filename="svm_map.tif")
 ```
 
 ## Key Operational Considerations
 
-- **Headless Display Dependencies:** Because the tool uses `cv2.imshow` for interactive pixel selection, it requires an active graphical windowing system. Running this tool on headless cloud instances, Docker containers, or Jupyter notebooks without configuring a virtual framebuffer (such as `Xvfb`) will cause a terminal application crash.
+- **Headless use:** Pass `training_samples` to skip the OpenCV window. If no samples are provided and no display is available, the tool raises a `RuntimeError` instead of aborting the process. Closing the window with ESC before all clicks are collected also raises a `RuntimeError`.
     
 - **Strict Coordinate Input Order:** The matrix construction logic maps labels based on the exact time sequence of user clicks. The first block of clicks is assigned to Class 1, the second to Class 2, and so on. If the user clicks targets out of order, the training dataset will contain incorrect labels, leading to flawed classification results.
     

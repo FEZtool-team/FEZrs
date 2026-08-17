@@ -40,6 +40,7 @@ def mock_svm_calculator():
         self.is_finished_click_event = False
         self.class_number = kwargs.get("class_number", 4)
         self.sample_number = kwargs.get("sample_number", 10)
+        self.training_samples = kwargs.get("training_samples")
 
     with patch(
         "fezrs.tools.svm.svm_calculator.BaseTool.__init__",
@@ -110,30 +111,38 @@ def test_validate_raises_error_when_samples_exceed_pixels(mock_svm_calculator):
 
 
 def test_process_creates_rgb_stack(mock_svm_calculator):
-    with patch("fezrs.tools.svm.svm_calculator.io.concatenate_images") as mock_concat:
-        mock_concat.return_value = MagicMock()
-        with patch("fezrs.tools.svm.svm_calculator.cv2.namedWindow"):
-            with patch("fezrs.tools.svm.svm_calculator.cv2.setMouseCallback"):
-                with patch("fezrs.tools.svm.svm_calculator.cv2.imshow"):
-                    with patch(
-                        "fezrs.tools.svm.svm_calculator.cv2.waitKey",
-                        return_value=27,
-                    ):
+    with patch(
+        "fezrs.tools.svm.svm_calculator._display_available", return_value=True
+    ):
+        with patch("fezrs.tools.svm.svm_calculator.io.concatenate_images") as mock_concat:
+            mock_concat.return_value = np.zeros((6, 100, 100))
+            with patch("fezrs.tools.svm.svm_calculator.cv2.namedWindow"):
+                with patch("fezrs.tools.svm.svm_calculator.cv2.setMouseCallback"):
+                    with patch("fezrs.tools.svm.svm_calculator.cv2.imshow"):
                         with patch(
-                            "fezrs.tools.svm.svm_calculator.cv2.destroyAllWindows"
+                            "fezrs.tools.svm.svm_calculator.cv2.waitKey",
+                            return_value=27,
                         ):
-                            mock_svm_calculator.process()
+                            with patch(
+                                "fezrs.tools.svm.svm_calculator.cv2.destroyAllWindows"
+                            ):
+                                with pytest.raises(
+                                    RuntimeError, match="interrupted"
+                                ):
+                                    mock_svm_calculator.process()
 
-                            assert (
-                                mock_svm_calculator.normalized_bands["red"] is not None
-                            )
-                            assert (
-                                mock_svm_calculator.normalized_bands["green"]
-                                is not None
-                            )
-                            assert (
-                                mock_svm_calculator.normalized_bands["blue"] is not None
-                            )
+                                assert (
+                                    mock_svm_calculator.normalized_bands["red"]
+                                    is not None
+                                )
+                                assert (
+                                    mock_svm_calculator.normalized_bands["green"]
+                                    is not None
+                                )
+                                assert (
+                                    mock_svm_calculator.normalized_bands["blue"]
+                                    is not None
+                                )
 
 
 def test_execute_calls_base_execute(mock_svm_calculator):
@@ -269,6 +278,7 @@ def _make_nonsquare_svm_calculator(class_number=2, sample_number=2):
         self.is_finished_click_event = False
         self.class_number = kwargs.get("class_number", class_number)
         self.sample_number = kwargs.get("sample_number", sample_number)
+        self.training_samples = kwargs.get("training_samples")
 
     with patch(
         "fezrs.tools.svm.svm_calculator.BaseTool.__init__",
@@ -305,20 +315,23 @@ def _run_process_with_clicks(calculator, clicks):
             return 0
         return 27
 
-    with patch("fezrs.tools.svm.svm_calculator.cv2.namedWindow"):
-        with patch(
-            "fezrs.tools.svm.svm_calculator.cv2.setMouseCallback",
-            fake_set_mouse_callback,
-        ):
-            with patch("fezrs.tools.svm.svm_calculator.cv2.imshow"):
-                with patch(
-                    "fezrs.tools.svm.svm_calculator.cv2.waitKey",
-                    fake_wait_key,
-                ):
+    with patch(
+        "fezrs.tools.svm.svm_calculator._display_available", return_value=True
+    ):
+        with patch("fezrs.tools.svm.svm_calculator.cv2.namedWindow"):
+            with patch(
+                "fezrs.tools.svm.svm_calculator.cv2.setMouseCallback",
+                fake_set_mouse_callback,
+            ):
+                with patch("fezrs.tools.svm.svm_calculator.cv2.imshow"):
                     with patch(
-                        "fezrs.tools.svm.svm_calculator.cv2.destroyAllWindows"
+                        "fezrs.tools.svm.svm_calculator.cv2.waitKey",
+                        fake_wait_key,
                     ):
-                        calculator.process()
+                        with patch(
+                            "fezrs.tools.svm.svm_calculator.cv2.destroyAllWindows"
+                        ):
+                            calculator.process()
 
 
 def test_nonsquare_training_samples_use_opencv_xy_as_numpy_yx():
@@ -409,3 +422,66 @@ def test_nonsquare_output_shape_and_pixel_order():
         calculator._output,
         np.arange(HEIGHT * WIDTH).reshape(HEIGHT, WIDTH),
     )
+
+
+def test_training_samples_classify_without_display():
+    calculator, bands = _make_nonsquare_svm_calculator(
+        class_number=2,
+        sample_number=2,
+    )
+    calculator.training_samples = [
+        (0, 6, 1),
+        (1, 5, 1),
+        (3, 0, 2),
+        (2, 2, 2),
+    ]
+
+    mock_clf = MagicMock()
+    mock_clf.predict.return_value = np.ones(HEIGHT * WIDTH, dtype=int)
+
+    with patch(
+        "fezrs.tools.svm.svm_calculator.svm.SVC",
+        return_value=mock_clf,
+    ):
+        with patch(
+            "fezrs.tools.svm.svm_calculator._display_available",
+            return_value=False,
+        ):
+            calculator.process()
+
+    training_x, training_y = mock_clf.fit.call_args[0]
+    expected_samples = np.array(
+        [
+            [band[row, col] for band in bands]
+            for row, col, _label in calculator.training_samples
+        ]
+    )
+    np.testing.assert_array_equal(training_x, expected_samples)
+    np.testing.assert_array_equal(training_y, np.array([1, 1, 2, 2]))
+    assert calculator._output.shape == (HEIGHT, WIDTH)
+
+
+def test_training_samples_reject_out_of_bounds():
+    calculator, _bands = _make_nonsquare_svm_calculator()
+    calculator.training_samples = [(0, 0, 1), (99, 99, 2)]
+    with pytest.raises(ValueError, match="outside the image bounds"):
+        calculator.process()
+
+
+def test_training_samples_require_two_classes():
+    calculator, _bands = _make_nonsquare_svm_calculator()
+    calculator.training_samples = [(0, 0, 1), (1, 1, 1)]
+    with pytest.raises(ValueError, match="at least two classes"):
+        calculator.process()
+
+
+def test_headless_without_samples_raises_clear_error():
+    calculator, _bands = _make_nonsquare_svm_calculator()
+    calculator.training_samples = None
+
+    with patch(
+        "fezrs.tools.svm.svm_calculator._display_available",
+        return_value=False,
+    ):
+        with pytest.raises(RuntimeError, match="training_samples"):
+            calculator.process()
