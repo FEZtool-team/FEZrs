@@ -23,7 +23,7 @@ All tools share a strict, predictable execution lifecycle managed by the parent 
     
 - **Processing Lifecycle:** Every tool overrides the private engineering core `_validate()` and the main operational gateway `process()`.
     
-- **Output Pipe:** The `execute()` method serializes the internal computed state (`self._output`) directly to disk as geo-referenced arrays or high-fidelity visual matrices using Matplotlib.
+- **Output Pipe:** The `execute()` method serializes the internal computed state (`self._output`) to a PNG figure via Matplotlib. Call `export_raster()` to write a georeferenced GeoTIFF that copies CRS and transform from the first input band.
 
 ## Comprehensive Class Specifications
 
@@ -237,7 +237,7 @@ The discrete directional quadrant ($1$ through $4$) indicates the path taken by 
         
     - `selecte` (`Literal["magnitude", "direction"]`): Selector pointing target execution to compute numerical scalar distances or integer category labels.
     
-- **Return State (`process()`):** Returns a `numpy.ndarray` array containing floating-point Euclidean distances or integer categorical maps ($1 \le x \le 4$).
+- **Return State (`process()`):** Returns a `numpy.ndarray` containing floating-point Euclidean distances or integer categorical maps. Direction codes are $1$–$4$ as above; **$0$ means no change** on at least one axis (a difference of exactly $0$).
 
 #### Execution Implementation
 

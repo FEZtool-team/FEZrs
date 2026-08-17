@@ -73,6 +73,48 @@ def test_process_sets_output(calculator):
     assert calculator._output is result
 
 
+def test_process_zero_change_is_class_zero(calculator):
+    calculator.select = "direction"
+    calculator.time_bands = {
+        "nir": {"image_skimage": np.array([[2.0, 2.0], [2.0, 2.0]])},
+        "swir1": {"image_skimage": np.array([[2.0, 2.0], [2.0, 2.0]])},
+        "before_nir": {"image_skimage": np.array([[2.0, 2.0], [2.0, 2.0]])},
+        "before_swir1": {"image_skimage": np.array([[2.0, 2.0], [2.0, 2.0]])},
+    }
+
+    result = calculator.process()
+
+    np.testing.assert_array_equal(result, np.zeros((2, 2)))
+
+
+def test_process_zero_change_magnitude_is_zero(calculator):
+    calculator.select = "magnitude"
+    calculator.time_bands = {
+        "nir": {"image_skimage": np.array([[5.0, 5.0], [5.0, 5.0]])},
+        "swir1": {"image_skimage": np.array([[1.0, 1.0], [1.0, 1.0]])},
+        "before_nir": {"image_skimage": np.array([[5.0, 5.0], [5.0, 5.0]])},
+        "before_swir1": {"image_skimage": np.array([[1.0, 1.0], [1.0, 1.0]])},
+    }
+
+    result = calculator.process()
+
+    np.testing.assert_allclose(result, np.zeros((2, 2)))
+
+
+def test_process_mixed_zero_does_not_inherit_neighbor(calculator):
+    calculator.select = "direction"
+    calculator.time_bands = {
+        "nir": {"image_skimage": np.array([[1.0, 3.0], [2.0, 2.0]])},
+        "swir1": {"image_skimage": np.array([[1.0, 1.0], [2.0, 2.0]])},
+        "before_nir": {"image_skimage": np.array([[2.0, 2.0], [2.0, 2.0]])},
+        "before_swir1": {"image_skimage": np.array([[2.0, 2.0], [2.0, 2.0]])},
+    }
+
+    result = calculator.process()
+
+    np.testing.assert_array_equal(result, np.array([[1, 2], [0, 0]]))
+
+
 def test_execute_returns_self():
     calculator = MagDirCalculator.__new__(MagDirCalculator)
 

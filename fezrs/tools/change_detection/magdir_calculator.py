@@ -36,67 +36,28 @@ class MagDirCalculator(BaseTool):
         pass
 
     def process(self):
-        change_magnitude_result = np.empty(
-            self.time_bands["nir"]["image_skimage"].shape
+        after_nir = np.asarray(self.time_bands["nir"]["image_skimage"], dtype=np.float64)
+        after_swir1 = np.asarray(
+            self.time_bands["swir1"]["image_skimage"], dtype=np.float64
         )
-        change_direction_result = np.empty(
-            self.time_bands["nir"]["image_skimage"].shape
+        before_nir = np.asarray(
+            self.time_bands["before_nir"]["image_skimage"], dtype=np.float64
+        )
+        before_swir1 = np.asarray(
+            self.time_bands["before_swir1"]["image_skimage"], dtype=np.float64
         )
 
-        for i in range(len(self.time_bands["nir"]["image_skimage"])):
-            for j in range(len(self.time_bands["nir"]["image_skimage"][0])):
-                change_magnitude = np.sqrt(
-                    (
-                        self.time_bands["before_nir"]["image_skimage"][i][j]
-                        - self.time_bands["nir"]["image_skimage"][i][j]
-                    )
-                    ** 2
-                    + (
-                        self.time_bands["before_swir1"]["image_skimage"][i][j]
-                        - self.time_bands["swir1"]["image_skimage"][i][j]
-                    )
-                    ** 2
-                )
+        delta_nir = after_nir - before_nir
+        delta_swir1 = after_swir1 - before_swir1
 
-                if (
-                    self.time_bands["nir"]["image_skimage"][i][j]
-                    - self.time_bands["before_nir"]["image_skimage"][i][j]
-                    < 0
-                    and self.time_bands["swir1"]["image_skimage"][i][j]
-                    - self.time_bands["before_swir1"]["image_skimage"][i][j]
-                    < 0
-                ):
-                    change_direction = 1
-                elif (
-                    self.time_bands["nir"]["image_skimage"][i][j]
-                    - self.time_bands["before_nir"]["image_skimage"][i][j]
-                    > 0
-                    and self.time_bands["swir1"]["image_skimage"][i][j]
-                    - self.time_bands["before_swir1"]["image_skimage"][i][j]
-                    < 0
-                ):
-                    change_direction = 2
-                elif (
-                    self.time_bands["nir"]["image_skimage"][i][j]
-                    - self.time_bands["before_nir"]["image_skimage"][i][j]
-                    < 0
-                    and self.time_bands["swir1"]["image_skimage"][i][j]
-                    - self.time_bands["before_swir1"]["image_skimage"][i][j]
-                    > 0
-                ):
-                    change_direction = 3
-                elif (
-                    self.time_bands["nir"]["image_skimage"][i][j]
-                    - self.time_bands["before_nir"]["image_skimage"][i][j]
-                    > 0
-                    and self.time_bands["swir1"]["image_skimage"][i][j]
-                    - self.time_bands["before_swir1"]["image_skimage"][i][j]
-                    > 0
-                ):
-                    change_direction = 4
+        change_magnitude_result = np.sqrt(delta_nir**2 + delta_swir1**2)
 
-                change_magnitude_result[i][j] = change_magnitude
-                change_direction_result[i][j] = change_direction
+        # 0 = no change on at least one axis (a difference of exactly 0).
+        change_direction_result = np.zeros(after_nir.shape, dtype=np.int8)
+        change_direction_result[(delta_nir < 0) & (delta_swir1 < 0)] = 1
+        change_direction_result[(delta_nir > 0) & (delta_swir1 < 0)] = 2
+        change_direction_result[(delta_nir < 0) & (delta_swir1 > 0)] = 3
+        change_direction_result[(delta_nir > 0) & (delta_swir1 > 0)] = 4
 
         match self.select:
             case "magnitude":
