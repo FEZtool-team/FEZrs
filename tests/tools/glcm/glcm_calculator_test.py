@@ -3,7 +3,10 @@ import pytest
 from unittest.mock import MagicMock, patch
 from skimage.feature import graycomatrix, graycoprops
 
-from fezrs.tools.glcm.glcm_calculator import GLCMCalculator
+from fezrs.tools.glcm.glcm_calculator import (
+    GLCMCalculator,
+    quantize_to_gray_levels,
+)
 
 
 @pytest.fixture
@@ -288,6 +291,77 @@ def test_nonsquare_border_uses_truncated_window(nonsquare_calculator):
             expected,
         )
         assert np.isfinite(nonsquare_calculator._output[row, col])
+
+
+def test_quantize_preserves_order_for_16bit_values():
+    image = np.array(
+        [[23, 1000, 3311], [2000, 6200, 255]],
+        dtype=np.int16,
+    )
+    quantized = quantize_to_gray_levels(image, levels=256)
+
+    assert quantized.dtype == np.uint8
+    assert quantized.min() == 0
+    assert quantized.max() == 255
+    # Gray-level ordering is preserved (unlike a wraparound uint8 cast).
+    assert quantized[0, 1] < quantized[1, 0]
+    assert quantized[1, 0] < quantized[0, 2]
+    correlation = np.corrcoef(image.ravel().astype(float), quantized.ravel().astype(float))[0, 1]
+    assert correlation > 0.99
+    wrapped = np.array(image, dtype="uint8")
+    wrap_corr = np.corrcoef(image.ravel().astype(float), wrapped.ravel().astype(float))[0, 1]
+    assert wrap_corr < 0.5
+
+
+def test_quantize_leaves_in_range_uint8_unchanged():
+    image = np.array([[1, 2], [3, 4]], dtype=np.uint8)
+    quantized = quantize_to_gray_levels(image, levels=256)
+    np.testing.assert_array_equal(quantized, image)
+
+
+def test_init_accepts_property_alias():
+    fake_metadata = {
+        "nir": {
+            "width": 4,
+            "height": 4,
+            "image_skimage": np.arange(16, dtype=np.uint8).reshape(4, 4),
+        }
+    }
+    fake_files_handler = MagicMock()
+    fake_files_handler.get_metadata_bands.return_value = fake_metadata
+
+    def fake_init(self, *args, **kwargs):
+        self.files_handler = fake_files_handler
+        self._output = None
+
+    with patch(
+        "fezrs.tools.glcm.glcm_calculator.BaseTool.__init__",
+        fake_init,
+    ):
+        calculator = GLCMCalculator(
+            nir_path="dummy_nir.tif",
+            window_size=3,
+            property="energy",
+        )
+
+    assert calculator.property == "energy"
+
+
+def test_quantize_constant_image_is_zeros():
+    image = np.full((3, 3), 512, dtype=np.int16)
+    quantized = quantize_to_gray_levels(image, levels=256)
+    np.testing.assert_array_equal(quantized, np.zeros((3, 3), dtype=np.uint8))
+
+
+def test_quantize_rejects_invalid_levels():
+    with pytest.raises(ValueError, match="levels"):
+        quantize_to_gray_levels(np.ones((2, 2)), levels=1)
+
+
+def test_process_does_not_print_by_default(calculator, capsys):
+    calculator.process()
+    captured = capsys.readouterr()
+    assert captured.out == ""
 
 
 # NOTE - These block code for integration test the GLCMCalculator

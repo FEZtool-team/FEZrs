@@ -127,7 +127,7 @@ $$\sigma_i = \sqrt{\sum_{i=0}^{G-1} \sum_{j=0}^{G-1} (i - \mu_i)^2 \cdot p(i, j)
 └──────────────────────────────┘          skimage per step                    └──────────────────────────────┘
 ```
 
-1. **Quantization Baseline:** The pipeline extracts the single-band raster array (typically the Near-Infrared band) and casts it to an 8-bit unsigned integer array (`uint8`).
+1. **Quantization Baseline:** Integer images that already lie in `[0, levels-1]` (default `levels=256`) are used as-is. Wider ranges, such as 16-bit Landsat DNs, and floating-point data are min–max scaled onto `[0, levels-1]` so gray-level **ordering is preserved**. A wraparound `dtype=uint8` cast is not used.
     
 2. **Sliding Window Trajectory:** A square window of user-defined size $W \times W$ slides across the image grid with a horizontal and vertical stride of 1 pixel. The window is anchored at the current pixel $(i, j)$ and extends down and to the right.
     
@@ -148,9 +148,13 @@ $$\sigma_i = \sqrt{\sum_{i=0}^{G-1} \sum_{j=0}^{G-1} (i - \mu_i)^2 \cdot p(i, j)
 
 $$\text{window\_size} \ge 3$$
 
-- `propery` (`str`): Target Haralick feature name selection. Must match one of the following strings:
+- `property` (`str`): Target Haralick feature name. The historical spelling `propery` is still accepted.
     
     - `"contrast"`, `"dissimilarity"`, `"homogeneity"`, `"ASM"`, `"energy"`, `"correlation"`.
+    
+- `levels` (`int`, default=`256`): Number of gray levels after quantization. Must be between 2 and 256. GLCM results depend on this value.
+    
+- `verbose` (`bool`, default=`False`): When `True`, prints one progress line per raster row.
 
 #### Operational Validation (`_validate`)
 
@@ -158,7 +162,7 @@ The programmatic `_validate()` method enforces runtime constraints prior to code
 
 1. Verifies that `window_size` is an integer and an odd value greater than or equal to 3.
     
-2. Checks that `propery` is a valid string matching one of the six supported Haralick feature types (`contrast`, `dissimilarity`, `homogeneity`, `ASM`, `energy`, `correlation`).
+2. Checks that `property` (or the legacy `propery` alias) is a valid string matching one of the six supported Haralick feature types (`contrast`, `dissimilarity`, `homogeneity`, `ASM`, `energy`, `correlation`).
     
 3. Confirms that the target single-band file path exists and is readable.
 
@@ -176,7 +180,7 @@ from fezrs.tools.glcm import GLCMCalculator
 texture_engine = GLCMCalculator(
     nir_path=Path("./data/Landsat8_NIR.tif"),
     window_size=5,
-    propery="homogeneity"
+    property="homogeneity",
 )
 
 # Run texture pipeline and save output map
