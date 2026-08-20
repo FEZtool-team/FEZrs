@@ -76,6 +76,42 @@ SAVICalculator(
 
 Sentinel-2 processing baseline 04.00 and later carries a `BOA_ADD_OFFSET` of $-1000$, hence the separate preset. If your product is already reflectance, the defaults are correct and nothing needs passing.
 
+## Output: Picture or Data Product
+
+Every tool can write its result two ways, and the difference matters.
+
+| | `execute()` | `to_raster()` |
+|---|---|---|
+| Format | PNG | GeoTIFF |
+| Values | quantized to 256 levels per channel | full precision (`float32` / `int32`) |
+| Pixel grid | resampled by `dpi` and `bbox_inches` | identical to the input |
+| CRS / transform | none | copied from the source band |
+| Use | inspection, reporting, figures | GIS overlay, zonal statistics, differencing |
+
+`execute()` renders through matplotlib, with margins, colorbar and watermark baked in, so the result is a **picture of** the computed array rather than the array. A pixel that was `0.6237` cannot be recovered from it, which rules out thresholding, zonal statistics over mapped units, and multitemporal differencing. Use it for figures.
+
+`to_raster()` writes the array itself:
+
+```Python
+from fezrs import NDVICalculator
+
+calculator = NDVICalculator(nir_path="nir.tif", red_path="red.tif")
+calculator.process()
+calculator.to_raster("./exports/ndvi.tif")
+```
+
+The output carries the CRS and affine transform of the source band, so it lands in the right place when opened over other layers in QGIS or ArcGIS. Multi-component results, such as PCA's `(6, height, width)`, are written as multi-band rasters.
+
+**Defaults**, chosen for scene-scale raster products:
+
+- `float32` for continuous results — well beyond reflectance precision, half the size of `float64` — and `int32` for integer label maps such as classifications.
+- `nodata = NaN` for floating point output.
+- `tiled=True`, `compress="deflate"` with `predictor=3` for float data, and `BIGTIFF="IF_SAFER"`.
+
+Override any of them with `dtype=`, `nodata=` and `compress=`.
+
+**A source without a CRS raises.** Writing an identity transform instead would produce a file that looks georeferenced while placing the scene at the coordinate origin. If the inputs carry no spatial referencing, `execute()` is the appropriate output.
+
 ## Mathematical & Scientific Formulations
 
 ### `NDVICalculator` (Normalized Difference Vegetation Index)
