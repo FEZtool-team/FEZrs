@@ -44,8 +44,14 @@ from fezrs.tools.mosaic.mosaic_calculator import (
     MosaicCalculator,
 )
 
-from fezrs.tools.import_tools.geoeye_calculator import Geoeye_Calculator
-from fezrs.tools.import_tools.landsat8_calculator import Landsat8_Calculator
+from fezrs.tools.import_tools.geoeye_calculator import (
+    Geoeye_Calculator,
+    GeoeyeCalculator,
+)
+from fezrs.tools.import_tools.landsat8_calculator import (
+    Landsat8_Calculator,
+    Landsat8Calculator,
+)
 
 from fezrs.tools.change_detection.burn_calculator import BurnCalculator
 from fezrs.tools.change_detection.indices_calculator import IndicesCalculator
@@ -87,7 +93,9 @@ __all__ = [
     "SpectralProfileCalculator",
     "MosaicCalculator",
     "Geoeye_Calculator",
+    "GeoeyeCalculator",
     "Landsat8_Calculator",
+    "Landsat8Calculator",
     "BurnCalculator",
     "IndicesCalculator",
     "MagDirCalculator",

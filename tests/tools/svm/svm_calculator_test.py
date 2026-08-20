@@ -187,7 +187,7 @@ def test_execute_with_default_parameters(mock_svm_calculator):
         True,
         None,
         False,
-        "Tool_output",
+        None,
         500,
         "tight",
         False,

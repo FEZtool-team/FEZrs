@@ -232,7 +232,7 @@ The following matrix cross-references the required sensor channels, target range
 
 ```Python
 from pathlib import Path
-from fezrs.tools.indices import NDVICalculator
+from fezrs.tools.spectral_indices import NDVICalculator
 
 # Instantiate the NDVI processing engine using Landsat 8 paths
 ndvi_engine = NDVICalculator(
@@ -253,7 +253,7 @@ ndvi_engine.execute(
 
 ```Python
 from pathlib import Path
-from fezrs.tools.indices import NDWICalculator
+from fezrs.tools.spectral_indices import NDWICalculator
 
 # Instantiate McFeeters NDWI calculator using Sentinel-2 paths
 ndwi_engine = NDWICalculator(

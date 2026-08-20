@@ -248,7 +248,7 @@ def test_execute_with_default_parameters(mock_landsat8_calculator):
         False,
         None,
         False,
-        "Tool_output",
+        None,
         500,
         "tight",
         False,

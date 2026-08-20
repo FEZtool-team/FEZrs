@@ -74,7 +74,7 @@ class BaseTool(ABC):
         show_axis: bool = False,
         colormap: str = None,
         show_colorbar: bool = False,
-        filename_prefix: str = "Tool_output",
+        filename_prefix: str | None = None,
         dpi: int = 500,
         bbox_inches: str = "tight",
         grid: bool = True,
@@ -101,7 +101,11 @@ class BaseTool(ABC):
         Returns:
             The path to the saved image file.
         """
-        filename_prefix = self.__tool_name
+        # Fall back to the tool name only when the caller did not choose a
+        # prefix. Previously the argument was accepted, documented, and then
+        # overwritten on this line before it was ever used.
+        if filename_prefix is None:
+            filename_prefix = self.__tool_name
 
         # Check output property is not empty
         if self._output is None:
@@ -144,7 +148,7 @@ class BaseTool(ABC):
         show_axis: bool = False,
         colormap: str = None,
         show_colorbar: bool = False,
-        filename_prefix: str = "Tool_output",
+        filename_prefix: str | None = None,
         dpi: int = 500,
         bbox_inches: str = "tight",
         grid: bool = True,
@@ -184,5 +188,9 @@ class BaseTool(ABC):
             dpi,
             bbox_inches,
             grid,
+            # Forwarded rather than dropped: these were declared and documented
+            # on execute() but never reached plt.subplots().
+            1 if nrows is None else nrows,
+            1 if ncols is None else ncols,
         )
         return self

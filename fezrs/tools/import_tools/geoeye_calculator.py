@@ -34,7 +34,7 @@ class Geoeye_Calculator(BaseTool):
         show_axis=True,
         colormap="gray",
         show_colorbar=False,
-        filename_prefix="Tool_output",
+        filename_prefix=None,
         dpi=500,
         bbox_inches="tight",
         grid=False,
@@ -55,3 +55,8 @@ class Geoeye_Calculator(BaseTool):
             nrows,
             ncols,
         )
+
+
+# PEP 8 conformant alias; the underscored name is retained for compatibility
+# with existing code and remains exported.
+GeoeyeCalculator = Geoeye_Calculator

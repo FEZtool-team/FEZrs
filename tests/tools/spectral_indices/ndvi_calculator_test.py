@@ -129,6 +129,8 @@ def test_execute_calls_base_execute(mock_ndvi_calculator):
         500,
         "tight",
         False,
+        None,
+        None,
     )
     assert result == "executed"
 
@@ -147,9 +149,11 @@ def test_execute_with_default_parameters(mock_ndvi_calculator):
         False,
         cm.Grays,
         True,
-        "Tool_output",
+        None,
         1000,
         "tight",
         True,
+        None,
+        None,
     )
     assert result == "executed"

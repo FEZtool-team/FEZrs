@@ -117,6 +117,8 @@ def test_execute_calls_base_execute(mock_savi_calculator):
         500,
         "tight",
         False,
+        None,
+        None,
     )
     assert result == "executed"
 
@@ -135,9 +137,11 @@ def test_execute_with_default_parameters(mock_savi_calculator):
         False,
         "gray",
         True,
-        "Tool_output",
+        None,
         1000,
         "tight",
         True,
+        None,
+        None,
     )
     assert result == "executed"

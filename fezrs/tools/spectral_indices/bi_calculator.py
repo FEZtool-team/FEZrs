@@ -138,10 +138,12 @@ class BICalculator(BaseTool):
         show_axis=False,
         colormap="gray",
         show_colorbar=True,
-        filename_prefix="Tool_output",
+        filename_prefix=None,
         dpi=1000,
         bbox_inches="tight",
         grid=True,
+        nrows=None,
+        ncols=None,
     ):
         return super().execute(
             output_path,
@@ -154,4 +156,6 @@ class BICalculator(BaseTool):
             dpi,
             bbox_inches,
             grid,
+            nrows,
+            ncols,
         )

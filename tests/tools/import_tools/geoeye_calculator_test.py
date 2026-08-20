@@ -133,7 +133,7 @@ def test_execute_with_default_parameters(mock_geoeye_calculator):
         True,
         "gray",
         False,
-        "Tool_output",
+        None,
         500,
         "tight",
         False,

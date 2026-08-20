@@ -129,6 +129,8 @@ def test_execute_calls_base_execute(mock_ui_calculator):
         500,
         "tight",
         False,
+        None,
+        None,
     )
     assert result == "executed"
 
@@ -147,9 +149,11 @@ def test_execute_with_default_parameters(mock_ui_calculator):
         False,
         cm.gray,
         True,
-        "Tool_output",
+        None,
         1000,
         "tight",
         True,
+        None,
+        None,
     )
     assert result == "executed"
