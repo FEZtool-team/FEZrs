@@ -10,18 +10,18 @@ from fezrs.tools.spectral_indices.ui_calculator import UICalculator
 
 @pytest.fixture
 def mock_ui_calculator():
-    fake_normalized_bands = {
+    fake_source_bands = {
         "nir": np.random.rand(100, 100),
         "swir2": np.random.rand(100, 100),
     }
 
     fake_files_handler = MagicMock()
-    fake_files_handler.get_normalized_bands.return_value = fake_normalized_bands
+    fake_files_handler.get_bands.return_value = fake_source_bands
 
     def fake_init(self, *args, **kwargs):
         self.files_handler = fake_files_handler
         self._output = None
-        self.normalized_bands = fake_normalized_bands
+        self.source_bands = fake_source_bands
 
     with patch(
         "fezrs.tools.spectral_indices.ui_calculator.BaseTool.__init__",
@@ -36,9 +36,9 @@ def mock_ui_calculator():
 
 
 def test_initialization(mock_ui_calculator):
-    assert mock_ui_calculator.normalized_bands is not None
-    assert "nir" in mock_ui_calculator.normalized_bands
-    assert "swir2" in mock_ui_calculator.normalized_bands
+    assert mock_ui_calculator.source_bands is not None
+    assert "nir" in mock_ui_calculator.source_bands
+    assert "swir2" in mock_ui_calculator.source_bands
     assert mock_ui_calculator._output is None
 
 
@@ -47,13 +47,13 @@ def test_validate_method_exists(mock_ui_calculator):
 
 
 def test_process_calculates_ui_correctly(mock_ui_calculator):
-    mock_ui_calculator.normalized_bands = {
+    mock_ui_calculator.source_bands = {
         "nir": np.array([[0.5, 0.6], [0.7, 0.8]]),
         "swir2": np.array([[0.1, 0.2], [0.3, 0.4]]),
     }
 
-    nir = mock_ui_calculator.normalized_bands["nir"]
-    swir2 = mock_ui_calculator.normalized_bands["swir2"]
+    nir = mock_ui_calculator.source_bands["nir"]
+    swir2 = mock_ui_calculator.source_bands["swir2"]
     expected = (swir2 - nir) / (nir + swir2)
 
     result = mock_ui_calculator.process()
@@ -63,7 +63,7 @@ def test_process_calculates_ui_correctly(mock_ui_calculator):
 
 
 def test_process_handles_division_by_zero(mock_ui_calculator):
-    mock_ui_calculator.normalized_bands = {
+    mock_ui_calculator.source_bands = {
         "nir": np.zeros((100, 100)),
         "swir2": np.zeros((100, 100)),
     }
@@ -79,7 +79,7 @@ def test_process_handles_division_by_zero(mock_ui_calculator):
 
 
 def test_process_returns_correct_shape(mock_ui_calculator):
-    mock_ui_calculator.normalized_bands = {
+    mock_ui_calculator.source_bands = {
         "nir": np.random.rand(150, 200),
         "swir2": np.random.rand(150, 200),
     }
@@ -90,7 +90,7 @@ def test_process_returns_correct_shape(mock_ui_calculator):
 
 
 def test_ui_values_range(mock_ui_calculator):
-    mock_ui_calculator.normalized_bands = {
+    mock_ui_calculator.source_bands = {
         "nir": np.array([[1.0, 0.0], [0.5, 0.3]]),
         "swir2": np.array([[0.0, 1.0], [0.5, 0.9]]),
     }

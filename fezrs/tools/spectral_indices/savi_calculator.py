@@ -1,6 +1,7 @@
 # Import module and files
 from fezrs.base import BaseTool
 from fezrs.tools.spectral_indices._division import divide_with_nan
+from fezrs.utils.radiometry_handler import apply_scaling, warn_if_not_reflectance
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -10,17 +11,22 @@ class SAVICalculator(BaseTool):
         self,
         nir_path: BandPathType,
         red_path: BandPathType,
+        scale_factor: float = 1.0,
+        offset: float = 0.0,
     ):
         super().__init__(nir_path=nir_path, red_path=red_path)
-        self.normalized_bands = self.files_handler.get_normalized_bands(
-            requested_bands=["nir", "red"]
+        self.source_bands = apply_scaling(
+            self.files_handler.get_bands(requested_bands=["nir", "red"]),
+            scale_factor=scale_factor,
+            offset=offset,
         )
+        warn_if_not_reflectance(self.source_bands, "SAVI")
 
     def _validate(self):
         pass
 
     def process(self):
-        nir, red = (self.normalized_bands[band] for band in ("nir", "red"))
+        nir, red = (self.source_bands[band] for band in ("nir", "red"))
 
         self._output = divide_with_nan(nir - red, nir + red + 0.5) * 1.5
         return self._output

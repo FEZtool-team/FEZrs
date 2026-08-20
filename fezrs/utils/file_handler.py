@@ -198,6 +198,33 @@ class FileHandler:
             if self.bands.get(band) is not None
         }
 
+    def get_bands(self, requested_bands: Optional[List[BandNameType]] = None):
+        """
+        Retrieve the requested image bands with their values as read.
+
+        Unlike :meth:`get_normalized_bands`, no rescaling is applied. Spectral
+        indices must use this accessor: a per-band min-max rescale gives each
+        band a different affine transform, which alters the relationships
+        *between* bands, and those relationships are the entire physical content
+        of a band ratio.
+
+        Args:
+            requested_bands (Optional[List[BandNameType]]): A list of band names
+                to return. If None, all available bands are returned.
+
+        Returns:
+            Dict[str, Optional[np.ndarray]]: A dictionary mapping band names to
+                their image data as read. Bands with no data are excluded.
+        """
+        if requested_bands is None:
+            requested_bands = list(self.bands.keys())
+
+        return {
+            band: self.bands[band]
+            for band in requested_bands
+            if self.bands.get(band) is not None
+        }
+
     def get_metadata_bands(
         self, requested_bands: Optional[list[BandNameType]] = None
     ) -> Dict[str, Dict]:

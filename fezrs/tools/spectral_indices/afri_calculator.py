@@ -1,6 +1,7 @@
 # Import module and files
 from fezrs.base import BaseTool
 from fezrs.tools.spectral_indices._division import divide_with_nan
+from fezrs.utils.radiometry_handler import apply_scaling, warn_if_not_reflectance
 from fezrs.utils.type_handler import AFRIVariantType, BandPathType
 
 
@@ -38,6 +39,8 @@ class AFRICalculator(BaseTool):
         swir1_path: BandPathType | None = None,
         swir2_path: BandPathType | None = None,
         variant: AFRIVariantType = "1.6",
+        scale_factor: float = 1.0,
+        offset: float = 0.0,
     ):
         """
         Args:
@@ -45,6 +48,8 @@ class AFRICalculator(BaseTool):
             swir1_path: SWIR ~1.6 um band, required for the ``"1.6"`` variant.
             swir2_path: SWIR ~2.1 um band, required for the ``"2.1"`` variant.
             variant: Which AFRI formulation to compute.
+            scale_factor: Multiplicative radiometric scale, see RADIOMETRIC_PRESETS.
+            offset: Additive radiometric offset.
         """
         if variant not in AFRI_COEFFICIENTS:
             raise ValueError(
@@ -71,16 +76,19 @@ class AFRICalculator(BaseTool):
 
         super().__init__(**band_paths)
 
-        self.normalized_bands = self.files_handler.get_normalized_bands(
-            requested_bands=["nir", self.swir_band]
+        self.source_bands = apply_scaling(
+            self.files_handler.get_bands(requested_bands=["nir", self.swir_band]),
+            scale_factor=scale_factor,
+            offset=offset,
         )
+        warn_if_not_reflectance(self.source_bands, "AFRI")
 
     def _validate(self):
         pass
 
     def process(self):
         nir, swir = (
-            self.normalized_bands[band] for band in ("nir", self.swir_band)
+            self.source_bands[band] for band in ("nir", self.swir_band)
         )
 
         self._output = divide_with_nan(

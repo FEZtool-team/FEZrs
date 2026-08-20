@@ -3,6 +3,7 @@ import warnings
 # Import module and files
 from fezrs.base import BaseTool
 from fezrs.tools.spectral_indices._division import divide_with_nan
+from fezrs.utils.radiometry_handler import apply_scaling
 from fezrs.utils.type_handler import BandPathType, BIFormulationType
 
 
@@ -40,6 +41,8 @@ class BICalculator(BaseTool):
         swir1_path: BandPathType | None = None,
         blue_path: BandPathType | None = None,
         formulation: BIFormulationType | None = None,
+        scale_factor: float = 1.0,
+        offset: float = 0.0,
     ):
         """
         Args:
@@ -50,6 +53,8 @@ class BICalculator(BaseTool):
             blue_path: Blue band, required by ``"bsi"``.
             formulation: ``"bsi"`` or ``"legacy"``. Inferred from the supplied
                 bands when omitted.
+            scale_factor: Multiplicative radiometric scale, see RADIOMETRIC_PRESETS.
+            offset: Additive radiometric offset.
         """
         if formulation is None:
             formulation = (
@@ -95,8 +100,10 @@ class BICalculator(BaseTool):
 
         super().__init__(**band_paths)
 
-        self.normalized_bands = self.files_handler.get_normalized_bands(
-            requested_bands=list(self._required_bands)
+        self.source_bands = apply_scaling(
+            self.files_handler.get_bands(requested_bands=list(self._required_bands)),
+            scale_factor=scale_factor,
+            offset=offset,
         )
 
     def _validate(self):
@@ -105,7 +112,7 @@ class BICalculator(BaseTool):
     def process(self):
         if self.formulation == "bsi":
             swir1, red, nir, blue = (
-                self.normalized_bands[band]
+                self.source_bands[band]
                 for band in ("swir1", "red", "nir", "blue")
             )
             self._output = divide_with_nan(
@@ -114,7 +121,7 @@ class BICalculator(BaseTool):
             )
         else:
             nir, red, green = (
-                self.normalized_bands[band] for band in ("nir", "red", "green")
+                self.source_bands[band] for band in ("nir", "red", "green")
             )
             self._output = divide_with_nan(
                 (nir - green) - red,

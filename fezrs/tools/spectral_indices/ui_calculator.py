@@ -4,6 +4,7 @@ from matplotlib.pyplot import cm
 # Import module and files
 from fezrs.base import BaseTool
 from fezrs.tools.spectral_indices._division import divide_with_nan
+from fezrs.utils.radiometry_handler import apply_scaling, warn_if_not_reflectance
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -13,17 +14,22 @@ class UICalculator(BaseTool):
         self,
         nir_path: BandPathType,
         swir2_path: BandPathType,
+        scale_factor: float = 1.0,
+        offset: float = 0.0,
     ):
         super().__init__(nir_path=nir_path, swir2_path=swir2_path)
-        self.normalized_bands = self.files_handler.get_normalized_bands(
-            requested_bands=["nir", "swir2"]
+        self.source_bands = apply_scaling(
+            self.files_handler.get_bands(requested_bands=["nir", "swir2"]),
+            scale_factor=scale_factor,
+            offset=offset,
         )
+        warn_if_not_reflectance(self.source_bands, "UI")
 
     def _validate(self):
         pass
 
     def process(self):
-        nir, swir2 = (self.normalized_bands[band] for band in ("nir", "swir2"))
+        nir, swir2 = (self.source_bands[band] for band in ("nir", "swir2"))
 
         self._output = divide_with_nan(swir2 - nir, nir + swir2)
         return self._output

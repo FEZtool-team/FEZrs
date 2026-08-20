@@ -17,7 +17,7 @@ By calculating normalized differences, empirical scaling offsets, and non-linear
                                     │
                                     ▼
                     ┌────────────────────────────────┐
-                    │ Linear Quantization Scaling    │ ──► $I_{\text{norm}} \in [0.0, 1.0]$
+                    │ Radiometric Scaling (optional) │ ──► $\rho = \text{DN} \times s + o$
                     └───────────────┬────────────────┘
                                     │
          ┌──────────────────────────┴──────────────────────────┐
@@ -33,6 +33,48 @@ By calculating normalized differences, empirical scaling offsets, and non-linear
                     │    Dimensionless Float Output  │ ──► Dynamic range: $[-1.0, 1.0]$ or $[0.0, 1.0]$
                     └────────────────────────────────┘
 ```
+
+## Radiometric Input Requirements
+
+**Indices are computed on the band values as read.** No rescaling is applied unless you ask for it.
+
+> **Changed in 1.4.0.** Earlier releases routed every index through a per-band min–max rescale, $(x - x_{\min}) / (x_{\max} - x_{\min})$, applied *independently to each band*. Because each band received a different affine transform, this altered the relationships **between** bands — and those relationships are the entire physical content of a spectral index. Three consequences: published thresholds did not apply, values were not comparable across scenes or dates, and **a pixel's value depended on how much of the image you loaded**, since the rescale used the loaded extent's own extrema. Index values from earlier versions are not comparable with current output.
+>
+> Measured on the bundled example, the rescale inverted inter-band relationships outright: AFRI's correlation with NDVI ran **+0.71 on the values as stored and −0.69 after rescaling**, against a source paper that reports the two as nearly identical. Min–max normalization remains in use for the enhancement, HSV, PCA and SVM modules, where rescaling is appropriate — and for SVM it is necessary, since an RBF kernel needs comparable feature scales.
+
+### Which indices need reflectance, and which do not
+
+| Index | Constant in reflectance units? | Safe on raw DN? |
+|---|---|---|
+| NDVI, NDWI, UI, BSI | none | **Yes** — a normalized difference is invariant to a gain applied to all bands equally |
+| SAVI | soil adjustment $L = 0.5$ | **No** |
+| AFRI | coefficients $0.66$ / $0.50$ on SWIR | **No** |
+
+Adding $L = 0.5$ to a digital number in the thousands contributes nothing, so SAVI on unscaled input is silently not SAVI. The same applies to AFRI's coefficients. Both emit a `UserWarning` when handed values far outside the reflectance range.
+
+### Supplying the scaling
+
+Every index accepts `scale_factor` and `offset`, applied as $\rho = \text{DN} \times s + o$. Published values for the common analysis-ready products ship as `RADIOMETRIC_PRESETS`:
+
+```Python
+from fezrs import SAVICalculator
+from fezrs.utils.radiometry_handler import RADIOMETRIC_PRESETS
+
+SAVICalculator(
+    nir_path="LC09_..._SR_B5.TIF",
+    red_path="LC09_..._SR_B4.TIF",
+    **RADIOMETRIC_PRESETS["landsat-c2-l2"],       # scale 2.75e-5, offset -0.2
+).execute(output_path="./exports/")
+```
+
+| Preset | Scale | Offset |
+|---|---|---|
+| `landsat-c2-l2` | $2.75 \times 10^{-5}$ | $-0.2$ |
+| `sentinel2-l2a` | $10^{-4}$ | $0.0$ |
+| `sentinel2-l2a-baseline4` | $10^{-4}$ | $-0.1$ |
+| `reflectance` | $1.0$ | $0.0$ |
+
+Sentinel-2 processing baseline 04.00 and later carries a `BOA_ADD_OFFSET` of $-1000$, hence the separate preset. If your product is already reflectance, the defaults are correct and nothing needs passing.
 
 ## Mathematical & Scientific Formulations
 

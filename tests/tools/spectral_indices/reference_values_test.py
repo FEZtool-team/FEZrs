@@ -41,7 +41,7 @@ BANDS = {
 def _build(calculator_class, module_path, **kwargs):
     """Instantiate a calculator with BaseTool.__init__ patched out."""
     handler = MagicMock()
-    handler.get_normalized_bands.return_value = BANDS
+    handler.get_bands.return_value = BANDS
 
     def fake_init(self, *args, **inner):
         self.files_handler = handler
@@ -50,7 +50,7 @@ def _build(calculator_class, module_path, **kwargs):
     with patch(f"{module_path}.BaseTool.__init__", fake_init):
         calculator = calculator_class(**kwargs)
 
-    calculator.normalized_bands = BANDS
+    calculator.source_bands = BANDS
     return calculator
 
 
@@ -281,7 +281,7 @@ def test_bsi_separates_bare_ground_from_vegetation():
         "nir": np.array([[0.55, 0.28]]),
         "blue": np.array([[0.02, 0.20]]),
     }
-    handler.get_normalized_bands.return_value = vegetation_then_rock
+    handler.get_bands.return_value = vegetation_then_rock
 
     def fake_init(self, *args, **kwargs):
         self.files_handler = handler
@@ -296,7 +296,7 @@ def test_bsi_separates_bare_ground_from_vegetation():
             swir1_path="swir1.tif",
             blue_path="blue.tif",
         )
-    calculator.normalized_bands = vegetation_then_rock
+    calculator.source_bands = vegetation_then_rock
 
     output = calculator.process()
 

@@ -9,18 +9,18 @@ from fezrs.tools.spectral_indices.savi_calculator import SAVICalculator
 
 @pytest.fixture
 def mock_savi_calculator():
-    fake_normalized_bands = {
+    fake_source_bands = {
         "nir": np.random.rand(100, 100),
         "red": np.random.rand(100, 100),
     }
 
     fake_files_handler = MagicMock()
-    fake_files_handler.get_normalized_bands.return_value = fake_normalized_bands
+    fake_files_handler.get_bands.return_value = fake_source_bands
 
     def fake_init(self, *args, **kwargs):
         self.files_handler = fake_files_handler
         self._output = None
-        self.normalized_bands = fake_normalized_bands
+        self.source_bands = fake_source_bands
 
     with patch(
         "fezrs.tools.spectral_indices.savi_calculator.BaseTool.__init__",
@@ -35,9 +35,9 @@ def mock_savi_calculator():
 
 
 def test_initialization(mock_savi_calculator):
-    assert mock_savi_calculator.normalized_bands is not None
-    assert "nir" in mock_savi_calculator.normalized_bands
-    assert "red" in mock_savi_calculator.normalized_bands
+    assert mock_savi_calculator.source_bands is not None
+    assert "nir" in mock_savi_calculator.source_bands
+    assert "red" in mock_savi_calculator.source_bands
     assert mock_savi_calculator._output is None
 
 
@@ -46,13 +46,13 @@ def test_validate_method_exists(mock_savi_calculator):
 
 
 def test_process_calculates_savi_correctly(mock_savi_calculator):
-    mock_savi_calculator.normalized_bands = {
+    mock_savi_calculator.source_bands = {
         "nir": np.array([[0.5, 0.6], [0.7, 0.8]]),
         "red": np.array([[0.1, 0.2], [0.3, 0.4]]),
     }
 
-    nir = mock_savi_calculator.normalized_bands["nir"]
-    red = mock_savi_calculator.normalized_bands["red"]
+    nir = mock_savi_calculator.source_bands["nir"]
+    red = mock_savi_calculator.source_bands["red"]
     expected = ((nir - red) / (nir + red + 0.5)) * 1.5
 
     result = mock_savi_calculator.process()
@@ -62,7 +62,7 @@ def test_process_calculates_savi_correctly(mock_savi_calculator):
 
 
 def test_process_handles_division_by_zero(mock_savi_calculator):
-    mock_savi_calculator.normalized_bands = {
+    mock_savi_calculator.source_bands = {
         "nir": np.full((100, 100), -0.25),
         "red": np.full((100, 100), -0.25),
     }
@@ -78,7 +78,7 @@ def test_process_handles_division_by_zero(mock_savi_calculator):
 
 
 def test_process_returns_correct_shape(mock_savi_calculator):
-    mock_savi_calculator.normalized_bands = {
+    mock_savi_calculator.source_bands = {
         "nir": np.random.rand(150, 200),
         "red": np.random.rand(150, 200),
     }
