@@ -109,31 +109,34 @@ def test_validate_raises_error_when_samples_exceed_pixels(mock_svm_calculator):
         mock_svm_calculator._validate()
 
 
-def test_process_creates_rgb_stack(mock_svm_calculator):
+def test_process_raises_when_sample_collection_is_interrupted(mock_svm_calculator):
+    """
+    Pressing ESC previously left process() returning None with _output unset, so
+    the failure surfaced later as "Data not computed." from _export_file with no
+    indication of what had happened.
+    """
     with patch("fezrs.tools.svm.svm_calculator.io.concatenate_images") as mock_concat:
         mock_concat.return_value = MagicMock()
-        with patch("fezrs.tools.svm.svm_calculator.cv2.namedWindow"):
-            with patch("fezrs.tools.svm.svm_calculator.cv2.setMouseCallback"):
-                with patch("fezrs.tools.svm.svm_calculator.cv2.imshow"):
-                    with patch(
-                        "fezrs.tools.svm.svm_calculator.cv2.waitKey",
-                        return_value=27,
-                    ):
-                        with patch(
-                            "fezrs.tools.svm.svm_calculator.cv2.destroyAllWindows"
-                        ):
-                            mock_svm_calculator.process()
+        with (
+            patch(
+                "fezrs.tools.svm.svm_calculator.display_is_available",
+                return_value=True,
+            ),
+            patch("fezrs.tools.svm.svm_calculator.cv2.namedWindow"),
+            patch("fezrs.tools.svm.svm_calculator.cv2.setMouseCallback"),
+            patch("fezrs.tools.svm.svm_calculator.cv2.imshow"),
+            patch(
+                "fezrs.tools.svm.svm_calculator.cv2.waitKey",
+                return_value=27,
+            ),
+            patch("fezrs.tools.svm.svm_calculator.cv2.destroyAllWindows"),
+        ):
+            with pytest.raises(RuntimeError, match="interrupted before all"):
+                mock_svm_calculator.process()
 
-                            assert (
-                                mock_svm_calculator.normalized_bands["red"] is not None
-                            )
-                            assert (
-                                mock_svm_calculator.normalized_bands["green"]
-                                is not None
-                            )
-                            assert (
-                                mock_svm_calculator.normalized_bands["blue"] is not None
-                            )
+    assert mock_svm_calculator.normalized_bands["red"] is not None
+    assert mock_svm_calculator.normalized_bands["green"] is not None
+    assert mock_svm_calculator.normalized_bands["blue"] is not None
 
 
 def test_execute_calls_base_execute(mock_svm_calculator):
