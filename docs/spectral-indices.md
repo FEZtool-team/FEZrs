@@ -23,10 +23,10 @@ By calculating normalized differences, empirical scaling offsets, and non-linear
          ┌──────────────────────────┴──────────────────────────┐
          ▼                                                     ▼
  [Single-Band Processing Arrays]                       [Multi-Band Raster Math Engine]
- ├─ NDVICalculator (NIR, Red)                           ├─ BICalculator (NIR, Red, Green)
- ├─ NDWICalculator (Green, NIR)                         └─ SAVICalculator (NIR, Red, $L=0.5$)
- ├─ UICalculator (SWIR2, NIR)                          
- └─ AFRICalculator (NIR, SWIR1)                        
+ ├─ NDVICalculator (NIR, Red)                           ├─ BICalculator / BSI
+ ├─ NDWICalculator (Green, NIR)                         │    (SWIR1, Red, NIR, Blue)
+ ├─ UICalculator (SWIR2, NIR)                          └─ SAVICalculator (NIR, Red, $L=0.5$)
+ └─ AFRICalculator (NIR, SWIR1 | SWIR2)                
                                     │
                                     ▼
                     ┌────────────────────────────────┐
@@ -81,7 +81,7 @@ In sparse landscapes, variations in soil moisture, organic matter, and roughness
 
 The $L = 0.5$ adjustment factor shifts the intersection of the soil line back to the coordinate origin, minimizing the effect of background soil brightness. The multiplicative scaler $(1 + L) = 1.5$ ensures the final output remains comparable to the standard $[-1.0, 1.0]$ range.
 
-### AFRICalculator` (Aerosol Free Vegetation Index)
+### `AFRICalculator` (Aerosol Free Vegetation Index)
 
 #### Scientific and Physical Objective
 
@@ -89,15 +89,19 @@ The AFRI is designed to map dense forest canopies and high-biomass woody vegetat
 
 #### Mathematical Formulation
 
-The calculation separates the input into two distinct, interacting factors:
+Karnieli et al. (2001) define two formulations, selected with the `variant` parameter:
 
-$$\text{AFRI} = (\text{NIR} - 0.66) \times \left( \frac{\text{SWIR1}}{\text{NIR} + 0.66 \times \text{SWIR1}} \right)$$
+$$\text{AFRI}_{1.6} = \frac{\text{NIR} - 0.66 \times \text{SWIR1.6}}{\text{NIR} + 0.66 \times \text{SWIR1.6}} \qquad \text{AFRI}_{2.1} = \frac{\text{NIR} - 0.50 \times \text{SWIR2.1}}{\text{NIR} + 0.50 \times \text{SWIR2.1}}$$
 
 #### Biophysical Interaction Properties
 
-- **NIR Offset Constant ($\text{NIR} - 0.66$):** Dense, healthy forest canopies consistently exhibit high near-infrared reflectance. The empirical constant **0.66** serves as a structural threshold; pixels with low near-infrared values (such as open water, shadows, or asphalt) produce negative or near-zero results, effectively suppressing non-vegetated features.
-    
-- **Non-Linear Modulation Ratio:** The second term uses the short-wave infrared band ($\text{SWIR1}$) to modulate the index response. Because moisture-rich forest leaf canopies absorb $\text{SWIR1}$ energy while reflecting $\text{NIR}$, this ratio stays small but positive for healthy forests. This dampens variations caused by topographic shadows, ensuring consistent canopy mapping across rugged terrain.
+- **SWIR Substitution:** AFRI is structurally NDVI with a SWIR band substituted for the visible red. Aerosol scattering is strongly wavelength dependent and falls off toward longer wavelengths, so a SWIR-based index sees through smoke, haze and dust that would depress a red-based index. This is what makes AFRI usable over biomass-burning plumes and dust-laden atmospheres where NDVI fails.
+
+- **The Coefficients ($0.66$ and $0.50$):** These are **scaling factors applied to the SWIR band**, not thresholds. They come from the empirical reflectance relationships $\rho_{0.645} \approx 0.66 \times \rho_{1.6}$ and $\rho_{0.469} \approx 0.50 \times \rho_{2.1}$ reported in the source paper, and their role is to place the SWIR reflectance on the scale of the visible band it replaces. Applying the coefficient anywhere other than to the SWIR reflectance makes the expression dimensionally incoherent.
+
+- **Consistency With NDVI:** Under clear-sky conditions Karnieli et al. report that AFRI and NDVI values are almost identical. That equivalence is a practical validation check: on a haze-free scene, an AFRI implementation that does **not** correlate strongly and positively with NDVI is computing something else.
+
+> **Changed in 1.4.0.** Earlier releases computed $(\text{NIR} - 0.66) \times \text{SWIR1} / (\text{NIR} + 0.66 \times \text{SWIR1})$, which subtracts a bare dimensionless constant from a reflectance and then multiplies by a band ratio. It is a different quantity from Karnieli's index, correlating with it at only 0.17, and it produced negative values over 96% of the bundled example while this page claimed a $[0, +1]$ range. AFRI results from earlier versions are not comparable with current output.
 
 ### `NDWICalculator` (Normalized Difference Water Index)
 
@@ -123,17 +127,29 @@ In contrast, land features like healthy vegetation or dry soils reflect much mor
 
 #### Scientific and Physical Objective
 
-The Bare Soil Index isolates exposed soil surfaces, agricultural fallow fields, mining areas, and bare rock outcroppings by contrasting visible light combinations with near-infrared reflectance.
+The Bare Soil Index isolates exposed soil surfaces, agricultural fallow fields, mining areas, and bare rock outcroppings by contrasting short-wave infrared and red brightness against near-infrared and blue reflectance.
 
 #### Mathematical Formulation
 
-The index is calculated using a specialized normalized difference layout:
+The default formulation is the Bare Soil Index (BSI), selected automatically when `swir1_path` and `blue_path` are supplied:
 
-$$\text{BI} = \frac{(\text{NIR} - \text{Green}) - \text{Red}}{(\text{NIR} + \text{Green} + \text{Red})} = \frac{\text{NIR} - \text{Green} - \text{Red}}{\text{NIR} + \text{Green} + \text{Red}}$$
+$$\text{BSI} = \frac{(\text{SWIR1} + \text{Red}) - (\text{NIR} + \text{Blue})}{(\text{SWIR1} + \text{Red}) + (\text{NIR} + \text{Blue})}$$
 
 #### Biophysical Interaction Properties
 
- **Functional Inversion Reference:** Many published geological studies invert this formula to produce positive values for exposed soils. In this specific implementation, the layout uses $\text{NIR} - (\text{Green} + \text{Red})$ in the numerator. As a result, dense vegetation yields positive values, while bare soils—which show similar reflectance values across the visible green, red, and near-infrared bands—cluster near zero or drop into negative values. Concrete and asphalt structures typically produce strong negative values due to low near-infrared reflectance relative to visible wavelengths.
+- **Four-Band Contrast:** Bare soil and exposed rock are bright in $\text{SWIR1}$ and $\text{Red}$ and comparatively dark in $\text{NIR}$ and $\text{Blue}$. Vegetation is the exact inverse — a strong $\text{NIR}$ plateau against low visible reflectance. Pairing the bands this way makes the numerator change sign between the two surface types, so **BSI is positive over exposed ground and negative over canopy**, which is what allows lithological exposure to be separated from vegetation cover.
+
+- **Why SWIR Is Required:** The $\text{SWIR1}$ term carries the soil-moisture and clay-mineral response that no visible-band combination reproduces. An index built only from visible and NIR bands cannot distinguish dry bare soil from a sparsely vegetated surface of similar visible brightness.
+
+#### Legacy Formulation
+
+Previous releases computed a different expression, which remains reachable by passing `green_path` instead of `swir1_path`/`blue_path`:
+
+$$\text{BI}_{\text{legacy}} = \frac{\text{NIR} - \text{Green} - \text{Red}}{\text{NIR} + \text{Green} + \text{Red}}$$
+
+This is **not a published bare-soil index**. It subtracts two visible bands from NIR, so it responds primarily to vegetation brightness — dense vegetation yields positive values and bare soils cluster near zero or negative, the opposite of what the name implies. It is retained so existing results stay reproducible, and it emits a `DeprecationWarning`. Use the BSI formulation for new work.
+
+> **Citation note.** Earlier documentation attributed this module to As-syakur et al. (2012), which defines EBBI, $(\text{SWIR} - \text{NIR}) / (10\sqrt{\text{SWIR} + \text{TIR}})$ — a different formula requiring a thermal band this tool does not accept. That citation has been removed. The legacy expression above has no published source and should be treated as an original formulation.
 
 ### `UICalculator` (Urban Index)
 
@@ -163,9 +179,9 @@ The following matrix cross-references the required sensor channels, target range
 |---|---|---|---|---|---|---|
 |**`NDVICalculator`**|Canopy Health & Density|$\frac{\text{NIR} - \text{Red}}{\text{NIR} + \text{Red}}$|$[-1.0, \,\, +1.0]$|B5, B4|B8, B4|`'RdYlGn'` / `'YlGn'`|
 |**`SAVICalculator`**|Sparse / Arid Shrublands|$\frac{\text{NIR} - \text{Red}}{\text{NIR} + \text{Red} + 0.5} \times 1.5$|$[-1.0, \,\, +1.0]$|B5, B4|B8, B4|`'RdYlGn'` / `'YlGn'`|
-|**`AFRICalculator`**|Dense / Woody Forests|$(\text{NIR} - 0.66) \times \frac{\text{SWIR1}}{\text{NIR} + 0.66 \cdot \text{SWIR1}}$|$[0.0, \,\, +1.0]$|B5, B6|B8, B11|`'YlGn'`|
+|**`AFRICalculator`**|Dense / Woody Forests, Hazy Scenes|$\frac{\text{NIR} - 0.66 \cdot \text{SWIR1}}{\text{NIR} + 0.66 \cdot \text{SWIR1}}$|$[-1.0, \,\, +1.0]$|B5, B6|B8, B11|`'YlGn'`|
 |**`NDWICalculator`**|Water Bodies & Hydrology|$\frac{\text{Green} - \text{NIR}}{\text{Green} + \text{NIR}}$|$[-1.0, \,\, +1.0]$|B3, B5|B3, B8|`'Blues'`|
-|**`BICalculator`**|Bare Soil & Exposed Rock|$\frac{\text{NIR} - \text{Green} - \text{Red}}{\text{NIR} + \text{Green} + \text{Red}}$|$[-1.0, \,\, +1.0]$|B5, B4, B3|B8, B4, B3|`'inferno'` / `'hot'`|
+|**`BICalculator`**|Bare Soil & Exposed Rock|$\frac{(\text{SWIR1} + \text{Red}) - (\text{NIR} + \text{Blue})}{(\text{SWIR1} + \text{Red}) + (\text{NIR} + \text{Blue})}$|$[-1.0, \,\, +1.0]$|B6, B4, B5, B2|B11, B4, B8, B2|`'inferno'` / `'hot'`|
 |**`UICalculator`**|Built-up Urban Areas|$\frac{\text{SWIR2} - \text{NIR}}{\text{SWIR2} + \text{NIR}}$|$[-1.0, \,\, +1.0]$|B7, B5|B12, B8|`'coolwarm'`|
 
 ## Operational Implementation Examples

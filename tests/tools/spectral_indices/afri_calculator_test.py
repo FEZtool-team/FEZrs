@@ -46,6 +46,12 @@ def test_validate_method_exists(mock_afri_calculator):
 
 
 def test_process_calculates_afri_correctly(mock_afri_calculator):
+    """
+    Karnieli et al. (2001): AFRI_1.6 = (NIR - 0.66*SWIR1) / (NIR + 0.66*SWIR1).
+
+    The 0.66 coefficient multiplies the SWIR reflectance; it is not subtracted
+    from NIR as a bare constant.
+    """
     mock_afri_calculator.normalized_bands = {
         "nir": np.array([[0.5, 0.6], [0.7, 0.8]]),
         "swir1": np.array([[0.1, 0.2], [0.3, 0.4]]),
@@ -53,12 +59,12 @@ def test_process_calculates_afri_correctly(mock_afri_calculator):
 
     nir = mock_afri_calculator.normalized_bands["nir"]
     swir1 = mock_afri_calculator.normalized_bands["swir1"]
-    expected = (nir - 0.66) * (swir1 / (nir + (0.66 * swir1)))
+    expected = (nir - 0.66 * swir1) / (nir + 0.66 * swir1)
 
     result = mock_afri_calculator.process()
 
-    assert np.array_equal(result, expected)
-    assert np.array_equal(mock_afri_calculator._output, expected)
+    np.testing.assert_allclose(result, expected)
+    np.testing.assert_allclose(mock_afri_calculator._output, expected)
 
 
 def test_process_handles_zero_division(mock_afri_calculator):
