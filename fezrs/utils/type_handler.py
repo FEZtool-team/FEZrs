@@ -101,3 +101,10 @@ MagDirCDType = Literal[
     "direction",
 ]
 """Type alias for magnitude/direction change detection."""
+
+
+AFRIVariantType = Literal["1.6", "2.1"]
+"""Type alias for the two AFRI formulations defined by Karnieli et al. (2001)."""
+
+BIFormulationType = Literal["bsi", "legacy"]
+"""Type alias for the supported bare-soil index formulations."""

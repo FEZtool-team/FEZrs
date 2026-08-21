@@ -9,18 +9,18 @@ from fezrs.tools.spectral_indices.afri_calculator import AFRICalculator
 
 @pytest.fixture
 def mock_afri_calculator():
-    fake_normalized_bands = {
+    fake_source_bands = {
         "nir": np.random.rand(100, 100),
         "swir1": np.random.rand(100, 100),
     }
 
     fake_files_handler = MagicMock()
-    fake_files_handler.get_normalized_bands.return_value = fake_normalized_bands
+    fake_files_handler.get_bands.return_value = fake_source_bands
 
     def fake_init(self, *args, **kwargs):
         self.files_handler = fake_files_handler
         self._output = None
-        self.normalized_bands = fake_normalized_bands
+        self.source_bands = fake_source_bands
 
     with patch(
         "fezrs.tools.spectral_indices.afri_calculator.BaseTool.__init__",
@@ -35,9 +35,9 @@ def mock_afri_calculator():
 
 
 def test_initialization(mock_afri_calculator):
-    assert mock_afri_calculator.normalized_bands is not None
-    assert "nir" in mock_afri_calculator.normalized_bands
-    assert "swir1" in mock_afri_calculator.normalized_bands
+    assert mock_afri_calculator.source_bands is not None
+    assert "nir" in mock_afri_calculator.source_bands
+    assert "swir1" in mock_afri_calculator.source_bands
     assert mock_afri_calculator._output is None
 
 
@@ -46,23 +46,29 @@ def test_validate_method_exists(mock_afri_calculator):
 
 
 def test_process_calculates_afri_correctly(mock_afri_calculator):
-    mock_afri_calculator.normalized_bands = {
+    """
+    Karnieli et al. (2001): AFRI_1.6 = (NIR - 0.66*SWIR1) / (NIR + 0.66*SWIR1).
+
+    The 0.66 coefficient multiplies the SWIR reflectance; it is not subtracted
+    from NIR as a bare constant.
+    """
+    mock_afri_calculator.source_bands = {
         "nir": np.array([[0.5, 0.6], [0.7, 0.8]]),
         "swir1": np.array([[0.1, 0.2], [0.3, 0.4]]),
     }
 
-    nir = mock_afri_calculator.normalized_bands["nir"]
-    swir1 = mock_afri_calculator.normalized_bands["swir1"]
-    expected = (nir - 0.66) * (swir1 / (nir + (0.66 * swir1)))
+    nir = mock_afri_calculator.source_bands["nir"]
+    swir1 = mock_afri_calculator.source_bands["swir1"]
+    expected = (nir - 0.66 * swir1) / (nir + 0.66 * swir1)
 
     result = mock_afri_calculator.process()
 
-    assert np.array_equal(result, expected)
-    assert np.array_equal(mock_afri_calculator._output, expected)
+    np.testing.assert_allclose(result, expected)
+    np.testing.assert_allclose(mock_afri_calculator._output, expected)
 
 
 def test_process_handles_zero_division(mock_afri_calculator):
-    mock_afri_calculator.normalized_bands = {
+    mock_afri_calculator.source_bands = {
         "nir": np.zeros((100, 100)),
         "swir1": np.zeros((100, 100)),
     }
@@ -79,7 +85,7 @@ def test_process_handles_zero_division(mock_afri_calculator):
 
 
 def test_process_returns_correct_shape(mock_afri_calculator):
-    mock_afri_calculator.normalized_bands = {
+    mock_afri_calculator.source_bands = {
         "nir": np.random.rand(150, 200),
         "swir1": np.random.rand(150, 200),
     }
@@ -118,6 +124,8 @@ def test_execute_calls_base_execute(mock_afri_calculator):
         500,
         "tight",
         False,
+        None,
+        None,
     )
     assert result == "executed"
 
@@ -136,9 +144,11 @@ def test_execute_with_default_parameters(mock_afri_calculator):
         False,
         "gray",
         True,
-        "Tool_output",
+        None,
         1000,
         "tight",
         True,
+        None,
+        None,
     )
     assert result == "executed"

@@ -173,13 +173,13 @@ def test_process_pixels_are_samples_not_bands(mock_pca_calculator):
     assert np.linalg.matrix_rank(centered_bands) <= N_BANDS - 1
 
 
-def test_histogram_export_requires_select_band(mock_pca_calculator):
+def test_histogram_export_requires_a_component(mock_pca_calculator):
     mock_pca_calculator.selectBand = None
+    mock_pca_calculator.component = None
 
     with pytest.raises(
         ValueError,
-        match="You cannot use histogram_export\\(\\) without "
-        "passing selectBand\\.",
+        match="without passing component",
     ):
         mock_pca_calculator.histogram_export(
             output_path="./output"
@@ -255,3 +255,146 @@ def test_execute(mock_pca_calculator):
 
     assert result is mock_pca_calculator
     mock_execute.assert_called_once()
+
+
+# --- Component selection and eigen-structure (issue #42) ----------------------
+
+
+def _synthetic_pca_calculator(component=None, selectBand=None, standardize=False):
+    """
+    Build a PCACalculator over six correlated synthetic bands, with
+    BaseTool.__init__ patched out so nothing touches disk.
+    """
+    rng = np.random.default_rng(11)
+    base = rng.normal(size=(16, 16))
+    bands = [
+        base * weight + rng.normal(scale=0.2, size=(16, 16))
+        for weight in (1.0, 0.8, 0.6, 1.4, 1.2, 0.4)
+    ]
+    # Deliberately unequal band variances, so covariance and correlation PCA
+    # give different answers.
+    bands[3] = bands[3] * 40.0
+
+    handler = MagicMock()
+    handler.get_metadata_bands.return_value = {
+        name: {"height": 16, "width": 16, "image_skimage": bands[0]}
+        for name in ("nir", "blue", "green", "red", "swir1", "swir2")
+    }
+    handler.get_images_collection.return_value = bands
+
+    def fake_init(self, *args, **kwargs):
+        self.files_handler = handler
+        self._output = None
+
+    with patch("fezrs.tools.pca.pca_calculator.BaseTool.__init__", fake_init):
+        return PCACalculator(
+            red_path="red.tif",
+            green_path="green.tif",
+            blue_path="blue.tif",
+            nir_path="nir.tif",
+            swir1_path="swir1.tif",
+            swir2_path="swir2.tif",
+            component=component,
+            selectBand=selectBand,
+            standardize=standardize,
+        )
+
+
+def test_component_selects_a_principal_component():
+    calculator = _synthetic_pca_calculator(component=3)
+
+    assert calculator.component == 3
+
+
+@pytest.mark.parametrize("component", [0, 7, -1])
+def test_component_must_be_within_range(component):
+    with pytest.raises(ValueError, match="component must be between 1 and 6"):
+        _synthetic_pca_calculator(component=component)
+
+
+def test_select_band_is_deprecated_and_names_its_component():
+    """
+    selectBand='red' plotted the first principal component and titled the figure
+    "Histogram of PCA Band Red", attributing the output to an input band that
+    did not produce it.
+    """
+    with pytest.warns(DeprecationWarning, match="resolves to principal component 1"):
+        calculator = _synthetic_pca_calculator(selectBand="red")
+
+    assert calculator.component == 1
+
+
+def test_component_and_select_band_are_mutually_exclusive():
+    with pytest.raises(ValueError, match="not both"):
+        _synthetic_pca_calculator(component=2, selectBand="red")
+
+
+def test_explained_variance_ratio_is_exposed():
+    calculator = _synthetic_pca_calculator(component=1)
+
+    with pytest.raises(RuntimeError, match="Run process\\(\\)"):
+        calculator.explained_variance_ratio_
+
+    calculator.process()
+
+    ratios = calculator.explained_variance_ratio_
+    assert ratios.shape == (6,)
+    np.testing.assert_allclose(ratios.sum(), 1.0, atol=1e-6)
+    # Ordered by decreasing variance.
+    assert np.all(np.diff(ratios) <= 1e-12)
+
+
+def test_components_loadings_are_exposed():
+    calculator = _synthetic_pca_calculator(component=1)
+
+    with pytest.raises(RuntimeError, match="Run process\\(\\)"):
+        calculator.components_
+
+    calculator.process()
+
+    assert calculator.components_.shape == (6, 6)
+    assert len(calculator.band_order) == 6
+
+
+def test_component_signs_are_deterministic():
+    """
+    Eigenvector signs are arbitrary in PCA, so without a fixed convention the
+    same scene can produce an inverted component image between runs -- a
+    reproducibility defect of the same kind as issue #37.
+    """
+    first = _synthetic_pca_calculator(component=1)
+    second = _synthetic_pca_calculator(component=1)
+
+    first.process()
+    second.process()
+
+    np.testing.assert_allclose(first.components_, second.components_)
+    np.testing.assert_allclose(first._output, second._output)
+
+    # The convention itself: the largest-magnitude loading is positive.
+    dominant = np.argmax(np.abs(first.components_), axis=1)
+    leading = first.components_[np.arange(6), dominant]
+    assert np.all(leading > 0)
+
+
+def test_standardize_changes_the_variance_structure():
+    """
+    sklearn decomposes the covariance matrix, so a band with a much wider
+    digital-number range dominates the leading components regardless of its
+    information content. Standardizing scales each band to unit variance first.
+    """
+    covariance = _synthetic_pca_calculator(component=1, standardize=False)
+    correlation = _synthetic_pca_calculator(component=1, standardize=True)
+
+    covariance.process()
+    correlation.process()
+
+    assert not np.allclose(
+        covariance.explained_variance_ratio_,
+        correlation.explained_variance_ratio_,
+    )
+    # The inflated band no longer swamps PC1.
+    assert (
+        correlation.explained_variance_ratio_[0]
+        < covariance.explained_variance_ratio_[0]
+    )

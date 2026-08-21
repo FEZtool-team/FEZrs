@@ -1,3 +1,4 @@
+import warnings
 from uuid import uuid4
 
 import matplotlib.pyplot as plt
@@ -20,7 +21,22 @@ class PCACalculator(BaseTool, HistogramExportMixin):
         swir1_path: BandPathType,
         swir2_path: BandPathType,
         selectBand: BandNamePCAType | None = None,
+        component: int | None = None,
+        standardize: bool = False,
     ):
+        """
+        Args:
+            component: Principal component to inspect, numbered 1..6 in order of
+                decreasing explained variance.
+            selectBand: Deprecated. A band name that resolves to a fixed
+                component index. A principal component is a linear combination
+                of all six input bands, so no component corresponds to an input
+                band; use ``component`` instead.
+            standardize: Run PCA on the correlation matrix rather than the
+                covariance matrix, by scaling each band to unit variance first.
+                Without it, bands with the largest digital-number range dominate
+                the leading components regardless of their information content.
+        """
         super().__init__(
             red_path=red_path,
             green_path=green_path,
@@ -47,7 +63,7 @@ class PCACalculator(BaseTool, HistogramExportMixin):
             self.metadata_bands["red"]["width"],
         )
 
-        self.selectBand = selectBand
+        self.standardize = standardize
 
         # Input band order.
         #
@@ -61,6 +77,40 @@ class PCACalculator(BaseTool, HistogramExportMixin):
             "swir2": 4,
             "green": 5,
         }
+
+        self.band_order = [
+            name
+            for name, _ in sorted(
+                self.bindTheBandsToNumber.items(), key=lambda item: item[1]
+            )
+        ]
+
+        if component is not None and selectBand is not None:
+            raise ValueError("Pass either 'component' or 'selectBand', not both.")
+
+        if selectBand is not None:
+            if selectBand not in self.bindTheBandsToNumber:
+                raise ValueError(f"Invalid PCA band: {selectBand}")
+            resolved = self.bindTheBandsToNumber[selectBand] + 1
+            warnings.warn(
+                f"PCACalculator's 'selectBand' is deprecated: {selectBand!r} "
+                f"resolves to principal component {resolved}. A principal "
+                "component is a linear combination of all six input bands, so "
+                "no component corresponds to an input band. Pass "
+                f"component={resolved} instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            component = resolved
+
+        if component is not None and not 1 <= component <= 6:
+            raise ValueError(
+                f"component must be between 1 and 6, received {component}."
+            )
+
+        self.component = component
+        self.selectBand = selectBand
+        self._pca = None
 
     def _validate(self):
         """
@@ -100,11 +150,10 @@ class PCACalculator(BaseTool, HistogramExportMixin):
                 f"Missing required PCA bands: {missing_bands}"
             )
 
-        if self.selectBand is not None:
-            if self.selectBand not in self.bindTheBandsToNumber:
-                raise ValueError(
-                    f"Invalid PCA band: {self.selectBand}"
-                )
+        if self.component is not None and not 1 <= self.component <= 6:
+            raise ValueError(
+                f"component must be between 1 and 6, received {self.component}."
+            )
 
     def process(self):
         """
@@ -173,11 +222,32 @@ class PCACalculator(BaseTool, HistogramExportMixin):
                 "No valid pixels were found for PCA."
             )
 
+        valid_images = images[valid_mask]
+
+        if self.standardize:
+            # Correlation-matrix PCA. sklearn decomposes the covariance matrix,
+            # which lets whichever band happens to carry the widest
+            # digital-number range dominate the leading components regardless of
+            # how much information it holds.
+            band_std = valid_images.std(axis=0)
+            band_std[band_std == 0] = 1.0
+            valid_images = (valid_images - valid_images.mean(axis=0)) / band_std
+
         pca = skpc(n_components=6)
 
-        transformed_valid = pca.fit_transform(
-            images[valid_mask]
-        )
+        transformed_valid = pca.fit_transform(valid_images)
+
+        # Eigenvector signs are arbitrary: the same scene can yield an inverted
+        # component image between runs, or between a scene and a crop of it,
+        # which makes results non-reproducible and the imagery hard to read.
+        # Fix the convention so the largest-magnitude loading is always
+        # positive.
+        dominant = np.argmax(np.abs(pca.components_), axis=1)
+        signs = np.sign(pca.components_[np.arange(6), dominant])
+        signs[signs == 0] = 1.0
+
+        pca.components_ = pca.components_ * signs[:, np.newaxis]
+        transformed_valid = transformed_valid * signs
 
         transformed = np.full(
             (images.shape[0], 6),
@@ -197,6 +267,43 @@ class PCACalculator(BaseTool, HistogramExportMixin):
 
         return self._output
 
+    @property
+    def explained_variance_ratio_(self):
+        """
+        Share of total variance carried by each principal component.
+
+        Returns:
+            np.ndarray: Shape ``(6,)``, ordered by decreasing variance.
+
+        Raises:
+            RuntimeError: If ``process()`` has not run yet.
+        """
+        if self._pca is None:
+            raise RuntimeError(
+                "Run process() before reading explained_variance_ratio_."
+            )
+        return self._pca.explained_variance_ratio_
+
+    @property
+    def components_(self):
+        """
+        Eigenvector loadings, shape ``(6, 6)`` as ``(component, band)``.
+
+        Band order is given by ``band_order``. These loadings, not the variance
+        share, are what identify a useful component: a target is isolated by the
+        component in which the relevant bands carry high loadings of opposing
+        sign.
+
+        Signs follow a fixed convention (largest-magnitude loading positive), so
+        repeated runs and crops of the same scene are directly comparable.
+
+        Raises:
+            RuntimeError: If ``process()`` has not run yet.
+        """
+        if self._pca is None:
+            raise RuntimeError("Run process() before reading components_.")
+        return self._pca.components_
+
     def _customize_export_file(self, ax):
         pass
 
@@ -212,10 +319,10 @@ class PCACalculator(BaseTool, HistogramExportMixin):
     ):
         
 
-        if self.selectBand is None:
+        if self.component is None:
             raise ValueError(
-                "You cannot use histogram_export() without "
-                "passing selectBand."
+                "You cannot use histogram_export() without passing component "
+                "(or the deprecated selectBand)."
             )
 
         self._validate()
@@ -223,9 +330,7 @@ class PCACalculator(BaseTool, HistogramExportMixin):
         if not hasattr(self, "_output"):
             self.process()
 
-        component_index = self.bindTheBandsToNumber[
-            self.selectBand
-        ]
+        component_index = self.component - 1
 
         pca_component = self._output[component_index]
 
@@ -239,9 +344,10 @@ class PCACalculator(BaseTool, HistogramExportMixin):
             color="black",
         )
 
+        # Labelling this by an input band name attributed the output to a band
+        # that did not produce it: every component mixes all six inputs.
         ax.set_title(
-            f"Histogram of PCA Band "
-            f"{self.selectBand.capitalize()}"
+            f"Histogram of Principal Component {self.component}"
         )
 
         if title:
@@ -249,7 +355,7 @@ class PCACalculator(BaseTool, HistogramExportMixin):
                 f"{title}-FEZrs"
             )
 
-        ax.set_xlabel("PCA Value")
+        ax.set_xlabel(f"PC{self.component} Value")
         ax.set_ylabel("Density")
         ax.grid(grid)
 
@@ -275,7 +381,7 @@ class PCACalculator(BaseTool, HistogramExportMixin):
         show_axis=False,
         colormap="gray",
         show_colorbar=False,
-        filename_prefix="Tool_output",
+        filename_prefix=None,
         dpi=1000,
         bbox_inches="tight",
         grid=False,
@@ -364,7 +470,7 @@ class PCACalculator(BaseTool, HistogramExportMixin):
         show_axis=False,
         colormap="gray",
         show_colorbar=False,
-        filename_prefix="Tool_output",
+        filename_prefix=None,
         dpi=500,
         bbox_inches="tight",
         grid=True,

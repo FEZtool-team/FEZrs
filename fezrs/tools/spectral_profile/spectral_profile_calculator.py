@@ -104,10 +104,12 @@ class SpectralProfileCalculator(BaseTool, HistogramExportMixin):
         show_axis=True,
         colormap="gray",
         show_colorbar=False,
-        filename_prefix="Tool_output",
+        filename_prefix=None,
         dpi=1000,
         bbox_inches="tight",
         grid=True,
+        nrows=None,
+        ncols=None,
     ):
         return super().execute(
             output_path,
@@ -120,4 +122,6 @@ class SpectralProfileCalculator(BaseTool, HistogramExportMixin):
             dpi,
             bbox_inches,
             grid,
+            nrows,
+            ncols,
         )

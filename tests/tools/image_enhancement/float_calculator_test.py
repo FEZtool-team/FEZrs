@@ -194,7 +194,7 @@ def test_execute_with_default_parameters(mock_float_calculator):
         False,
         "gray",
         False,
-        "Tool_output",
+        None,
         500,
         "tight",
         True,

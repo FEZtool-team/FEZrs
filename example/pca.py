@@ -1,14 +1,30 @@
+"""
+Principal component analysis example.
+
+Paths resolve relative to this file, so the script runs from any directory.
+"""
+
 from pathlib import Path
+
 from fezrs import PCACalculator
 
-PCACalculator(
-    blue_path= Path.cwd() / "./example/data/blue.tif",
-    green_path= Path.cwd() / "./example/data/green.tif",
-    red_path= Path.cwd() / "./example/data/red.tif",
-    nir_path= Path.cwd() / "./example/data/nir.tif",
-    swir1_path= Path.cwd() / "./example/data/swir_1.tif",
-    swir2_path= Path.cwd() / "./example/data/swir_2.tif",
-    selectBand="blue",
-).execute(
-    output_path=Path.cwd() /"./example/outputs/pca",
-).histogram_export(output_path=Path.cwd() /"./example/outputs/pca")
+DATA = Path(__file__).parent / "data"
+OUTPUTS = Path(__file__).parent / "outputs"
+
+calculator = PCACalculator(
+    blue_path=DATA / "blue.tif",
+    green_path=DATA / "green.tif",
+    red_path=DATA / "red.tif",
+    nir_path=DATA / "nir.tif",
+    swir1_path=DATA / "swir_1.tif",
+    swir2_path=DATA / "swir_2.tif",
+    component=1,
+)
+
+calculator.execute(output_path=OUTPUTS / "pca")
+calculator.histogram_export(output_path=OUTPUTS / "pca")
+
+# Variance share and band loadings are what decide which component is worth
+# inspecting -- the largest component is not always the informative one.
+for index, share in enumerate(calculator.explained_variance_ratio_, start=1):
+    print(f"PC{index}: {share:.1%} of total variance")
