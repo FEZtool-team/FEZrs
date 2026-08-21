@@ -308,20 +308,26 @@ def _run_process_with_clicks(calculator, clicks):
             return 0
         return 27
 
-    with patch("fezrs.tools.svm.svm_calculator.cv2.namedWindow"):
-        with patch(
-            "fezrs.tools.svm.svm_calculator.cv2.setMouseCallback",
-            fake_set_mouse_callback,
-        ):
-            with patch("fezrs.tools.svm.svm_calculator.cv2.imshow"):
-                with patch(
-                    "fezrs.tools.svm.svm_calculator.cv2.waitKey",
-                    fake_wait_key,
-                ):
+    # The GUI is fully mocked here, so the display check must be forced on:
+    # otherwise these tests pass on a workstation and fail on headless CI.
+    with patch(
+        "fezrs.tools.svm.svm_calculator.display_is_available",
+        return_value=True,
+    ):
+        with patch("fezrs.tools.svm.svm_calculator.cv2.namedWindow"):
+            with patch(
+                "fezrs.tools.svm.svm_calculator.cv2.setMouseCallback",
+                fake_set_mouse_callback,
+            ):
+                with patch("fezrs.tools.svm.svm_calculator.cv2.imshow"):
                     with patch(
-                        "fezrs.tools.svm.svm_calculator.cv2.destroyAllWindows"
+                        "fezrs.tools.svm.svm_calculator.cv2.waitKey",
+                        fake_wait_key,
                     ):
-                        calculator.process()
+                        with patch(
+                            "fezrs.tools.svm.svm_calculator.cv2.destroyAllWindows"
+                        ):
+                            calculator.process()
 
 
 def test_nonsquare_training_samples_use_opencv_xy_as_numpy_yx():
