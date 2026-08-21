@@ -1,5 +1,8 @@
 # Import packages and libraries
 from abc import ABC
+
+import numpy as np
+import rasterio as rio
 from PIL import Image
 from pathlib import Path
 from uuid import uuid4
@@ -139,6 +142,102 @@ class BaseTool(ABC):
         # Close plt and return value
         plt.close(fig)
         return filename
+
+    def to_raster(
+        self,
+        output_path: BandPathType,
+        reference_band: str | None = None,
+        dtype: str | None = None,
+        nodata=None,
+        compress: str = "deflate",
+    ):
+        """
+        Write the computed result as a georeferenced GeoTIFF.
+
+        ``execute()`` renders through matplotlib and saves a PNG: values are
+        quantized to 256 levels per channel, the pixel grid is resampled by dpi
+        and bbox_inches, and CRS and transform are discarded. That output is a
+        picture of the result, not the result. This method writes the array
+        itself, carrying the CRS and affine transform of the source band, so it
+        can be overlaid in a GIS, intersected with mapped units, differenced
+        against another date, or used for zonal statistics.
+
+        Multi-component outputs, such as PCA's ``(6, height, width)``, are
+        written as multi-band rasters.
+
+        Args:
+            output_path: Destination ``.tif`` path. Parent directories are
+                created.
+            reference_band: Band whose spatial referencing to copy. Defaults to
+                the first supplied band.
+            dtype: Output dtype. Defaults to ``float32`` for continuous results
+                and ``int32`` for integer label maps such as classifications.
+                float32 is well beyond reflectance precision and half the size
+                of float64.
+            nodata: Nodata value. Defaults to NaN for floating point output.
+            compress: GeoTIFF compression. ``deflate`` with a horizontal
+                differencing predictor is the usual choice for float rasters.
+
+        Returns:
+            str: Path to the written raster.
+
+        Raises:
+            ValueError: If nothing has been computed, or the source carried no
+                spatial referencing to propagate.
+        """
+        if self._output is None:
+            raise ValueError("Data not computed.")
+
+        profile = self.files_handler.get_raster_profile(reference_band)
+
+        if profile is None or profile["crs"] is None:
+            raise ValueError(
+                "The source band carries no CRS, so the result cannot be "
+                "written as a georeferenced raster. Reading the inputs from "
+                "GeoTIFFs that declare a CRS and transform will fix this. Use "
+                "execute() if a plain image is what you want."
+            )
+
+        array = np.asarray(self._output)
+        if array.ndim == 2:
+            array = array[np.newaxis, :, :]
+        elif array.ndim != 3:
+            raise ValueError(
+                f"Cannot write an array with {array.ndim} dimensions as a raster."
+            )
+
+        if dtype is None:
+            dtype = (
+                "int32" if np.issubdtype(array.dtype, np.integer) else "float32"
+            )
+
+        if nodata is None and not np.issubdtype(np.dtype(dtype), np.integer):
+            nodata = float("nan")
+
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        creation = {
+            "driver": "GTiff",
+            "height": array.shape[1],
+            "width": array.shape[2],
+            "count": array.shape[0],
+            "dtype": dtype,
+            "crs": profile["crs"],
+            "transform": profile["transform"],
+            "nodata": nodata,
+            "tiled": True,
+            "compress": compress,
+            "BIGTIFF": "IF_SAFER",
+        }
+        if compress == "deflate" and not np.issubdtype(np.dtype(dtype), np.integer):
+            # Horizontal differencing for floating point data.
+            creation["predictor"] = 3
+
+        with rio.open(output_path, "w", **creation) as destination:
+            destination.write(array.astype(dtype))
+
+        return str(output_path)
 
     def execute(
         self,
