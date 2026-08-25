@@ -3,15 +3,17 @@
 [![DOI](https://zenodo.org/badge/710286874.svg)](https://doi.org/10.5281/zenodo.14938038) [![Tests](https://github.com/FEZtool-team/FEZrs/actions/workflows/FEZrs_Tests.yml/badge.svg?branch=main)](https://github.com/FEZtool-team/FEZrs/actions/workflows/FEZrs_Tests.yml) [![Documentation](https://img.shields.io/website?url=https%3A%2F%2Ffeztool-team.github.io%2FFEZdocs%2Flibraries%2Ffezrs%2F&label=docs)](https://feztool-team.github.io/FEZdocs/libraries/fezrs/) [![Downloads/month](https://static.pepy.tech/badge/fezrs/month)](https://pepy.tech/project/fezrs) [![PyPI version](https://img.shields.io/pypi/v/fezrs.svg)](https://pypi.org/project/fezrs/)
 [![Conda Version](https://img.shields.io/conda/vn/FEZtool/fezrs?label=Anaconda&color=orange&logo=anaconda)](https://anaconda.org/FEZtool/fezrs) ![License](https://img.shields.io/pypi/l/FEZrs) [![PyPI Downloads](https://static.pepy.tech/badge/fezrs)](https://pepy.tech/projects/fezrs) ![GitHub last commit](https://img.shields.io/github/last-commit/FEZtool-team/fezrs) [![Platform](https://img.shields.io/conda/pn/feztool/fezrs?color=blue&label=Platform&style=flat)](https://anaconda.org/feztool/fezrs) ![GitHub stars](https://img.shields.io/github/stars/FEZtool-team/FEZrs?style=social)
 
-**FEZrs** is an advanced Python library developed by [**FEZtool**](https://github.com/FEZtool-team) for Remote Sensing applications. It provides a set of powerful tools for image processing, feature extraction, and analysis of geospatial data.
+FEZrs is a Python library developed by [FEZtool](https://github.com/FEZtool-team) for geospatial multispectral image processing and spectral analysis in remote sensing. It provides tools for image processing, feature extraction, spectral analysis, and analysis of geospatial raster data.
 
 ## **Features**
 
 ✅ Apply various image filtering techniques (Gaussian, Laplacian, Sobel, Median, Mean)  
 ✅ Contrast enhancement and edge detection  
 ✅ Support for geospatial raster data (TIFF)  
-✅ Designed for remote sensing and satellite imagery analysis  
-✅ Easy integration with FastAPI for web-based processing
+✅ Spectral analysis and calculation of remote sensing indices  
+✅ Tools for image classification, clustering, and feature extraction  
+✅ Designed for multispectral remote sensing and satellite imagery analysis  
+✅ Easy integration with Python-based web applications such as FastAPI
 
 ## Documentation
 
