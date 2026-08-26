@@ -1,6 +1,2 @@
 pytest==9.0.3
-
-gdal
-pyrsgis
 rasterio==1.5.0
-tensorflow
