@@ -28,7 +28,13 @@ def test_setup_uses_runtime_requirements(monkeypatch):
     runpy.run_path(str(PROJECT_ROOT / "setup.py"))
 
     assert captured_setup_kwargs["install_requires"] == expected_requirements
-    assert "rasterio==1.5.0" in captured_setup_kwargs["install_requires"]
+    assert any(
+        req.startswith("rasterio>=")
+        for req in captured_setup_kwargs["install_requires"]
+    )
+    assert all(
+        "==" not in req for req in captured_setup_kwargs["install_requires"]
+    )
 
 
 def test_setup_python_requires_matches_pinned_runtime_dependencies(monkeypatch):

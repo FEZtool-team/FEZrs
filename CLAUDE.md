@@ -9,11 +9,11 @@ FEZrs — "Feature Extraction and Zoning for Remote Sensing". A Python library (
 ## Commands
 
 ```bash
-python -m pip install -r requirements.txt   # runtime deps (exact pins)
-python -m pip install pytest                # test runner (CI installs it separately)
+python -m pip install -r requirements.txt   # runtime deps (lower bounds)
+python -m pip install -r requirements-dev.txt  # pytest; CI does this too
 ```
 
-`requirements-dev.txt` holds heavy/optional geo deps (`gdal`, `pyrsgis`, `tensorflow`) that are **not** installed in CI and are not imported by the current tool code.
+`requirements.txt` uses lower bounds (what `setup.py` publishes). Exact pins for reproducible installs live in `requirements-lock.txt`. `requirements-dev.txt` is the test runner (`pytest`).
 
 ```bash
 python -m pytest                            # full suite (what CI runs)
@@ -69,7 +69,7 @@ Type aliases and the `Literal` enums for tool options live in [fezrs/utils/type_
 
 ### Histogram export
 
-Tools that also produce a histogram inherit `HistogramExportMixin` ([fezrs/utils/histogram_handler.py](fezrs/utils/histogram_handler.py)) alongside `BaseTool` and expose a public `histogram_export(output_path, ...)`. The mixin supplies `_add_watermark(ax)` and `_save_histogram_figure(...)`. The public method is `histogram_export` — `README.md` and `paper/paper.md` still refer to a `chart_export` method that does not exist in the code.
+Tools that also produce a histogram inherit `HistogramExportMixin` ([fezrs/utils/histogram_handler.py](fezrs/utils/histogram_handler.py)) alongside `BaseTool` and expose a public `histogram_export(output_path, ...)`. The mixin supplies `_add_watermark(ax)` and `_save_histogram_figure(...)`. The public method is `histogram_export` (not `chart_export`).
 
 ### Tool categories
 

@@ -1,0 +1,12 @@
+# Exact pins for reproducible CI / local installs.
+# Published install_requires live in requirements.txt as lower bounds.
+numpy==2.4.6
+Pillow==12.2.0
+pandas==3.0.3
+pydantic==2.13.4
+rasterio==1.5.0
+matplotlib==3.10.9
+imagecodecs==2026.5.10
+scikit-learn==1.8.0
+scikit-image==0.26.0
+opencv-python==4.13.0.92
