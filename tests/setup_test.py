@@ -12,7 +12,7 @@ def test_setup_uses_runtime_requirements(monkeypatch):
     captured_setup_kwargs = {}
     expected_requirements = [
         line.strip()
-        for line in (PROJECT_ROOT / "requirements.txt").read_text().splitlines()
+        for line in (PROJECT_ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     ]
 
@@ -67,7 +67,7 @@ def test_bumpversion_creates_v_prefixed_tags():
 def test_pypi_publish_workflow_releases_from_version_tags():
     workflow = (
         PROJECT_ROOT / ".github" / "workflows" / "FEZrs_PyPI_Publish.yml"
-    ).read_text()
+    ).read_text(encoding="utf-8")
 
     assert 'tags:\n      - "v*"' in workflow
     assert "gh release create" in workflow
@@ -78,6 +78,6 @@ def test_pypi_publish_workflow_releases_from_version_tags():
 def test_test_workflow_runs_on_version_tags():
     workflow = (
         PROJECT_ROOT / ".github" / "workflows" / "FEZrs_Tests.yml"
-    ).read_text()
+    ).read_text(encoding="utf-8")
 
     assert 'tags:\n      - "v*"' in workflow

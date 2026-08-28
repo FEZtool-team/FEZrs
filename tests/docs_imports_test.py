@@ -26,12 +26,17 @@ IMPORT_PATTERN = re.compile(
 )
 
 
+def _read(path: Path) -> str:
+    # Windows defaults to cp1252; the docs use UTF-8 box-drawing characters.
+    return path.read_text(encoding="utf-8")
+
+
 def _documented_imports():
     found = []
     for source in DOC_SOURCES:
         if not source.is_file():
             continue
-        for match in IMPORT_PATTERN.finditer(source.read_text()):
+        for match in IMPORT_PATTERN.finditer(_read(source)):
             statement = " ".join(match.group(1).split())
             found.append(pytest.param(statement, id=f"{source.name}::{statement}"))
     return found
@@ -57,7 +62,7 @@ def test_every_exported_calculator_is_listed_in_the_readme():
     """
     import fezrs
 
-    readme = (PROJECT_ROOT / "README.md").read_text()
+    readme = _read(PROJECT_ROOT / "README.md")
 
     exported = [name for name in fezrs.__all__ if name.endswith("Calculator")]
     # The underscored legacy names stay exported but the README documents the
