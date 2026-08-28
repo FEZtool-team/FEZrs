@@ -73,6 +73,65 @@ def test_process_sets_output(calculator):
     assert calculator._output is result
 
 
+def test_process_zero_difference_is_no_change():
+    """A pixel with a difference of exactly 0 must not inherit a neighbour."""
+    calculator = MagDirCalculator.__new__(MagDirCalculator)
+    calculator.time_bands = {
+        "nir": {"image_skimage": np.array([[5.0, 5.0], [1.0, 3.0]])},
+        "swir1": {"image_skimage": np.array([[5.0, 1.0], [3.0, 3.0]])},
+        "before_nir": {"image_skimage": np.array([[5.0, 2.0], [2.0, 2.0]])},
+        "before_swir1": {"image_skimage": np.array([[5.0, 2.0], [2.0, 2.0]])},
+    }
+    calculator._output = None
+    calculator.select = "direction"
+
+    result = calculator.process()
+
+    expected = np.array(
+        [
+            [0, 2],
+            [3, 4],
+        ]
+    )
+    np.testing.assert_array_equal(result, expected)
+
+
+def test_identical_dates_are_zero_everywhere():
+    """The same scene as both dates must be magnitude 0 and direction 0."""
+    scene = np.array([[1.0, 3.0, 5.0], [2.0, 4.0, 6.0]])
+    calculator = MagDirCalculator.__new__(MagDirCalculator)
+    calculator.time_bands = {
+        "nir": {"image_skimage": scene},
+        "swir1": {"image_skimage": scene * 2},
+        "before_nir": {"image_skimage": scene},
+        "before_swir1": {"image_skimage": scene * 2},
+    }
+    calculator._output = None
+
+    calculator.select = "magnitude"
+    np.testing.assert_allclose(calculator.process(), np.zeros_like(scene))
+
+    calculator.select = "direction"
+    np.testing.assert_array_equal(
+        calculator.process(), np.zeros_like(scene, dtype=np.int32)
+    )
+
+
+def test_mixed_axis_change_is_no_change_class():
+    """A zero in only one band is class 0, not an unbound or leaked class."""
+    calculator = MagDirCalculator.__new__(MagDirCalculator)
+    calculator.time_bands = {
+        "nir": {"image_skimage": np.array([[3.0]])},
+        "swir1": {"image_skimage": np.array([[2.0]])},
+        "before_nir": {"image_skimage": np.array([[1.0]])},
+        "before_swir1": {"image_skimage": np.array([[2.0]])},
+    }
+    calculator._output = None
+    calculator.select = "direction"
+
+    np.testing.assert_array_equal(calculator.process(), np.array([[0]]))
+
+
 def test_execute_returns_self():
     calculator = MagDirCalculator.__new__(MagDirCalculator)
 

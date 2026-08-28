@@ -81,14 +81,13 @@ class SpectralProfileCalculator(BaseTool, HistogramExportMixin):
 
         fig, ax = plt.subplots(figsize=figsize)
 
-        ax.figure(figsize=figsize)
         ax.plot(self.xaxis, self.yaxis)
 
         if title:
-            plt.title(f"{title}-FEZrs")
+            ax.set_title(f"{title}-FEZrs")
 
-        ax.xlabel("Bands")
-        ax.ylabel("Intensity")
+        ax.set_xlabel("Bands")
+        ax.set_ylabel("Intensity")
         ax.grid(grid)
 
         self._add_watermark(ax)

@@ -210,6 +210,30 @@ def test_histogram_export_success(mock_pca_calculator, tmp_path):
     mock_save_histogram.assert_called_once()
 
 
+def test_histogram_export_computes_output_when_missing(mock_pca_calculator, tmp_path):
+    """
+    ``hasattr(self, "_output")`` is always true because BaseTool sets
+    ``_output = None``. Calling histogram_export on a fresh instance must
+    still run process() — that is the crash in issue #46.
+    """
+    assert mock_pca_calculator._output is None
+
+    mock_pca_calculator._logo_watermark = np.zeros((8, 8, 4), dtype=np.uint8)
+    output_path = tmp_path / "pca"
+    output_path.mkdir()
+
+    result = mock_pca_calculator.histogram_export(
+        output_path=output_path,
+        dpi=72,
+    )
+
+    assert result is mock_pca_calculator
+    assert mock_pca_calculator._output is not None
+    written = list(output_path.glob("*.png"))
+    assert len(written) == 1
+    assert written[0].stat().st_size > 0
+
+
 def test_export_file(mock_pca_calculator, tmp_path):
     mock_pca_calculator.process()
 

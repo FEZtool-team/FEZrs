@@ -327,7 +327,7 @@ class PCACalculator(BaseTool, HistogramExportMixin):
 
         self._validate()
 
-        if not hasattr(self, "_output"):
+        if self._output is None:
             self.process()
 
         component_index = self.component - 1

@@ -145,6 +145,8 @@ def test_histogram_export_calls_required_methods(mock_spectral_profile_calculato
             mock_spectral_profile_calculator.xaxis,
             mock_spectral_profile_calculator.yaxis,
         )
+        ax.set_xlabel.assert_called_once_with("Bands")
+        ax.set_ylabel.assert_called_once_with("Intensity")
         mock_watermark.assert_called_once_with(ax)
         mock_save.assert_called_once()
         assert result is mock_spectral_profile_calculator
@@ -159,9 +161,6 @@ def test_histogram_export_sets_title_correctly(mock_spectral_profile_calculator)
         patch(
             "fezrs.tools.spectral_profile.spectral_profile_calculator.plt.subplots"
         ) as mock_subplots,
-        patch(
-            "fezrs.tools.spectral_profile.spectral_profile_calculator.plt.title"
-        ) as mock_plt_title,
     ):
         mock_spectral_profile_calculator.xaxis = ["red", "green", "blue"]
         mock_spectral_profile_calculator.yaxis = [0.5, 0.6, 0.7]
@@ -176,7 +175,36 @@ def test_histogram_export_sets_title_correctly(mock_spectral_profile_calculator)
             grid=True,
         )
 
-        mock_plt_title.assert_called_once_with("My Spectral Analysis-FEZrs")
+        ax.set_title.assert_called_once_with("My Spectral Analysis-FEZrs")
+
+
+def test_histogram_export_writes_a_png(mock_spectral_profile_calculator, tmp_path):
+    """
+    A real Axes must accept the calls. A MagicMock as ``ax`` would accept
+    ``ax.figure(...)`` and ``ax.xlabel(...)`` and hide the crash in issue #46.
+    """
+    mock_spectral_profile_calculator._logo_watermark = np.zeros(
+        (8, 8, 4), dtype=np.uint8
+    )
+    mock_spectral_profile_calculator.files_handler.bands = {
+        "red": np.ones((4, 5)) * 0.1,
+        "green": np.ones((4, 5)) * 0.2,
+        "blue": np.ones((4, 5)) * 0.3,
+        "nir": np.ones((4, 5)) * 0.4,
+        "swir1": np.ones((4, 5)) * 0.5,
+        "swir2": np.ones((4, 5)) * 0.6,
+    }
+
+    result = mock_spectral_profile_calculator.histogram_export(
+        output_path=tmp_path,
+        title="Profile",
+        dpi=72,
+    )
+
+    written = list(tmp_path.glob("*.png"))
+    assert result is mock_spectral_profile_calculator
+    assert len(written) == 1
+    assert written[0].stat().st_size > 0
 
 
 def test_execute_calls_base_execute(mock_spectral_profile_calculator):
