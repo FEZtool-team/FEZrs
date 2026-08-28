@@ -1,5 +1,6 @@
 import runpy
 import sys
+from configparser import ConfigParser
 from types import SimpleNamespace
 from pathlib import Path
 
@@ -53,3 +54,30 @@ def test_setup_python_requires_matches_pinned_runtime_dependencies(monkeypatch):
     runpy.run_path(str(PROJECT_ROOT / "setup.py"))
 
     assert captured_setup_kwargs["python_requires"] == ">=3.11"
+
+
+def test_bumpversion_creates_v_prefixed_tags():
+    config = ConfigParser()
+    config.read(PROJECT_ROOT / ".bumpversion.cfg")
+
+    assert config.getboolean("bumpversion", "tag") is True
+    assert config["bumpversion"]["tag_name"] == "v{new_version}"
+
+
+def test_pypi_publish_workflow_releases_from_version_tags():
+    workflow = (
+        PROJECT_ROOT / ".github" / "workflows" / "FEZrs_PyPI_Publish.yml"
+    ).read_text()
+
+    assert 'tags:\n      - "v*"' in workflow
+    assert "gh release create" in workflow
+    assert "startsWith(github.ref, 'refs/tags/v')" in workflow
+    assert "bumpversion ${{ inputs.version_bump }}" in workflow
+
+
+def test_test_workflow_runs_on_version_tags():
+    workflow = (
+        PROJECT_ROOT / ".github" / "workflows" / "FEZrs_Tests.yml"
+    ).read_text()
+
+    assert 'tags:\n      - "v*"' in workflow

@@ -1,63 +1,105 @@
 name: PyPI Publish
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       version_bump:
-        description: 'Version bump type'
+        description: "Bump .bumpversion.cfg, commit, and push a v* tag. The tag workflow publishes."
         required: true
-        default: 'patch'
+        default: "patch"
         type: choice
         options:
           - patch
           - minor
           - major
+
+permissions:
+  contents: write
+
 jobs:
-  pypi_publish:
-    runs-on: ubuntu-22.04
+  bump_version:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
 
-      - name: Verify Python Version
-        run: python --version
+      - name: Install bumpversion
+        run: |
+          python -m pip install --upgrade pip
+          pip install bumpversion
+
+      - name: Configure Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version and push v* tag
+        run: |
+          bumpversion ${{ inputs.version_bump }}
+          git push origin HEAD --tags
+
+  pypi_publish:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify tag matches package version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION=$(python -c "from configparser import ConfigParser; cfg=ConfigParser(); cfg.read('.bumpversion.cfg'); print(cfg['bumpversion']['current_version'])")
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match .bumpversion.cfg version ${VERSION}"
+            exit 1
+          fi
 
       - name: Clean build artifacts
         run: rm -rf dist build *.egg-info
 
-      - name: Install Dependencies
+      - name: Install build and test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install setuptools setuptools_scm wheel twine build bumpversion
+          python -m pip install -r requirements.txt
+          python -m pip install -r requirements-dev.txt
+          python -m pip install setuptools wheel twine build
 
-      - name: Configure Git User  
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions@users.noreply.github.com"
+      - name: Run tests
+        run: python -m pytest
 
-      - name: Bump version
-        run: |
-          bumpversion ${{ inputs.version_bump }}
+      - name: Build package
+        run: python -m build
 
-      - name: Commit & Push the New Version
+      - name: Create GitHub Release
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
-          git push origin main --tags
-    
-      - name: Build and Publish to PyPI
+          gh release create "${{ github.ref_name }}" dist/* \
+            --title "FEZrs ${{ github.ref_name }}" \
+            --generate-notes \
+            --verify-tag
+
+      - name: Publish to PyPI
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          python -m build
-          python -m twine upload dist/*  # Upload the built package to PyPI
+        run: python -m twine upload dist/*
