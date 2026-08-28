@@ -98,9 +98,20 @@ Although these methods are widely utilized, there is still considerable value in
 
 # State of the field
 
-Numerous open-source software libraries provide relevant functionality for remote sensing and image analysis; however, these capabilities are frequently distributed across separate packages and frameworks, requiring users to combine multiple tools to construct complete analysis workflows. FEZrs builds upon widely adopted libraries, including OpenCV [@Xie:2013], scikit-image [@vanderWalt:2014], scikit-learn [@Kramer:2016], NumPy [@Harris:2020], matplotlib [@Hunter:2007], and pandas [@McKinney:2010], while maintaining compatibility with other commonly used libraries and frameworks in the geospatial and image analysis ecosystem, such as Rasterio [@Gillies:2013], GDAL [@Warmerdam:2008], and GeoPandas [@Jordahl:2020]. Nevertheless, constructing end-to-end analytical pipelines often demands considerable effort to integrate heterogeneous software components, methodologies, and data-processing workflows.
+FEZrs is built on general-purpose libraries — OpenCV [@Xie:2013], scikit-image [@vanderWalt:2014], scikit-learn [@Kramer:2016], NumPy [@Harris:2020], matplotlib [@Hunter:2007], pandas [@McKinney:2010], Rasterio [@Gillies:2013], GDAL [@Warmerdam:2008], and GeoPandas [@Jordahl:2020] — rather than competing with them. The relevant comparison is with domain-level remote sensing packages that already implement overlapping methods.
 
-FEZrs was built to address this fragmentation by consolidating frequently used remote sensing operations-spectral index computation, filtering, enhancement, texture analysis, dimensionality reduction, and both unsupervised and supervised classification-behind a consistent, calculator-style API. Rather than replacing low-level geospatial I/O libraries or general-purpose machine-learning frameworks, FEZrs layers domain-oriented workflows on top of them so that researchers can move from multi-band imagery to interpretable outputs with fewer ad hoc integration steps. This design targets users who need reproducible, scriptable remote sensing analysis without assembling a bespoke toolchain for each study.
+The closest neighbour is scikit-eo [@Tarazona:2024], a JOSS package that covers spectral indices, PCA, supervised classification including SVM, data fusion, and accuracy assessment. spyndex and the Awesome Spectral Indices catalogue [@Montero:2023] standardise more than two hundred index definitions; FEZrs implements a small, documented subset of those indices rather than a catalogue. Other tools occupy adjacent parts of the same space: earthpy and EOReader for scene handling, rioxarray for labelled rasters, RSGISLib and Orfeo Toolbox for processing pipelines, and torchgeo for deep-learning workflows.
+
+Those packages are capable, and FEZrs is not a replacement for any of them. What it adds is a uniform calculator API: thirty-seven heterogeneous operations (indices, filters, enhancement, GLCM, PCA, clustering, change detection, SVM) behind one three-line calling pattern, each able to write a publication-ready figure via `execute()` and a georeferenced GeoTIFF via `to_raster()` without plotting or I/O code from the user. That uniformity is aimed at teaching and at rapid exploratory work on multispectral scenes, where assembling a bespoke toolchain for each step is the usual cost.
+
+| Package | Scope | What FEZrs adds |
+|---------|-------|-----------------|
+| scikit-eo | Spectral indices, PCA, SVM, fusion, accuracy assessment | Same methods behind one calculator interface, plus publication figures |
+| spyndex / Awesome Spectral Indices | Catalogue of 200+ index definitions | A small teaching set with `execute()` / `to_raster()` export |
+| Rasterio, GDAL, OpenCV, scikit-image, scikit-learn | I/O, image processing, and ML building blocks | Domain workflows layered on top of these libraries |
+| earthpy, EOReader, rioxarray, RSGISLib, Orfeo Toolbox, torchgeo | Scene I/O, preprocessing pipelines, deep learning | Complementary; FEZrs does not replace them |
+
+Table 2: Domain-level packages with overlapping scope, and the narrower contribution FEZrs makes relative to each.
 
 # Software design
 
