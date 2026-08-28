@@ -12,14 +12,15 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'push')
+       (github.event.workflow_run.event == 'push' ||
+        github.event.workflow_run.event == 'workflow_dispatch'))
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.event.workflow_run.event == 'workflow_dispatch' && github.event.workflow_run.head_branch || github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Miniconda with Mamba
         uses: conda-incubator/setup-miniconda@v2

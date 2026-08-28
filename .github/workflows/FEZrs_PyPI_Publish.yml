@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version_bump:
-        description: "Bump .bumpversion.cfg, commit, and push a v* tag. The tag workflow publishes."
+        description: "Bump .bumpversion.cfg, commit, push a v* tag, then publish."
         required: true
         default: "patch"
         type: choice
@@ -23,13 +23,15 @@ jobs:
   bump_version:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.bump.outputs.tag }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_PAT }}
+          ref: ${{ github.ref_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -47,17 +49,39 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Bump version and push v* tag
+        id: bump
         run: |
           bumpversion ${{ inputs.version_bump }}
-          git push origin HEAD --tags
+          git push origin "HEAD:${{ github.ref_name }}" --tags
+          TAG=$(git describe --tags --exact-match)
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
   pypi_publish:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [bump_version]
+    if: >
+      always() &&
+      !cancelled() &&
+      (
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+        (github.event_name == 'workflow_dispatch' && needs.bump_version.result == 'success')
+      )
     runs-on: ubuntu-latest
 
     steps:
+      - name: Resolve version tag
+        id: release
+        run: |
+          if [ -n "${{ needs.bump_version.outputs.tag }}" ]; then
+            TAG="${{ needs.bump_version.outputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
       - name: Checkout tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.release.outputs.tag }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -66,10 +90,11 @@ jobs:
 
       - name: Verify tag matches package version
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
+          TAG="${{ steps.release.outputs.tag }}"
+          TAG="${TAG#v}"
           VERSION=$(python -c "from configparser import ConfigParser; cfg=ConfigParser(); cfg.read('.bumpversion.cfg'); print(cfg['bumpversion']['current_version'])")
           if [ "$TAG" != "$VERSION" ]; then
-            echo "Tag ${GITHUB_REF_NAME} does not match .bumpversion.cfg version ${VERSION}"
+            echo "Tag ${{ steps.release.outputs.tag }} does not match .bumpversion.cfg version ${VERSION}"
             exit 1
           fi
 
@@ -93,8 +118,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ github.ref_name }}" dist/* \
-            --title "FEZrs ${{ github.ref_name }}" \
+          gh release create "${{ steps.release.outputs.tag }}" dist/* \
+            --title "FEZrs ${{ steps.release.outputs.tag }}" \
             --generate-notes \
             --verify-tag
 

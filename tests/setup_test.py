@@ -73,6 +73,8 @@ def test_pypi_publish_workflow_releases_from_version_tags():
     assert "gh release create" in workflow
     assert "startsWith(github.ref, 'refs/tags/v')" in workflow
     assert "bumpversion ${{ inputs.version_bump }}" in workflow
+    assert "github.event_name == 'workflow_dispatch' && needs.bump_version.result == 'success'" in workflow
+    assert "token: ${{ secrets.GH_PAT }}" not in workflow
 
 
 def test_test_workflow_runs_on_version_tags():
@@ -81,3 +83,16 @@ def test_test_workflow_runs_on_version_tags():
     ).read_text(encoding="utf-8")
 
     assert 'tags:\n      - "v*"' in workflow
+
+
+def test_downstream_publish_workflows_chain_off_pypi_dispatch():
+    conda = (
+        PROJECT_ROOT / ".github" / "workflows" / "FEZrs_Conda_Publish.yml"
+    ).read_text(encoding="utf-8")
+    citation = (
+        PROJECT_ROOT / ".github" / "workflows" / "FEZrs_Citation_Update.yml"
+    ).read_text(encoding="utf-8")
+
+    for workflow in (conda, citation):
+        assert "github.event.workflow_run.event == 'push'" in workflow
+        assert "github.event.workflow_run.event == 'workflow_dispatch'" in workflow
