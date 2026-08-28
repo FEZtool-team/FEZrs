@@ -447,6 +447,17 @@ class PCACalculator(BaseTool, HistogramExportMixin):
 
         self._customize_export_file(ax)
 
+        # This override bypasses BaseTool._export_file, so it has to repeat two
+        # things that method does: create the output directory, and fall back to
+        # the tool name when no prefix was given. Without the fallback the
+        # default filename_prefix of None was interpolated literally, producing
+        # files called "None_<uuid>.png".
+        output_path = Path(output_path)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        if filename_prefix is None:
+            filename_prefix = self.__class__.__name__.replace("Calculator", "")
+
         filename = (
             f"{output_path}/"
             f"{filename_prefix}_{uuid4().hex}.png"

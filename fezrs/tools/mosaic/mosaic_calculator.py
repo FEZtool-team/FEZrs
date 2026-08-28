@@ -44,6 +44,11 @@ class MosaicCalculator(BaseTool):
         dpi=100,
         bbox_inches="tight",
         grid=False,
+        # Accepted so BaseTool.execute() can forward them like it does to every
+        # other tool. Unused here: the mosaic is written as a single raster and
+        # a single preview, not a subplot grid.
+        nrows=1,
+        ncols=1,
     ):
         filename_prefix = self.__class__.__name__.replace("Calculator", "")
         output_path = Path(output_path)
