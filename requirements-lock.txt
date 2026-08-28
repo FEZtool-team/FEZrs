@@ -3,7 +3,6 @@
 numpy==2.4.6
 Pillow==12.2.0
 pandas==3.0.3
-pydantic==2.13.4
 rasterio==1.5.0
 matplotlib==3.10.9
 imagecodecs==2026.5.10

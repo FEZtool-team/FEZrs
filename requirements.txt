@@ -1,10 +1,18 @@
+# Lower bounds, not exact pins: FEZrs is a library and has to coexist with the
+# numpy / rasterio / scikit-learn a user's environment already has. Add an upper
+# bound only for a known, documented incompatibility.
+# Exact versions for reproducible installs live in requirements-lock.txt.
 numpy>=1.26
 Pillow>=10.0
 pandas>=2.0
-pydantic>=2.0
 rasterio>=1.3
 matplotlib>=3.8
-imagecodecs>=2023.1.1
 scikit-learn>=1.3
 scikit-image>=0.22
 opencv-python>=4.8
+
+# Not imported by FEZrs directly, but loaded at `import fezrs` time through
+# scikit-image/tifffile, and required to decode compressed (LZW, deflate, JPEG)
+# GeoTIFFs on the input path. The bundled example data is uncompressed; most
+# real Landsat and Sentinel deliveries are not.
+imagecodecs>=2023.1.1
