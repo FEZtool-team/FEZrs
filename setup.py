@@ -36,6 +36,11 @@ setup(
     url="https://github.com/FEZtool-team/FEZrs",
     classifiers=[
         "Programming Language :: Python :: 3",
+        # Kept in step with the CI matrix in .github/workflows/FEZrs_Tests.yml,
+        # so the advertised support is the support that is actually tested.
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],

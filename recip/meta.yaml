@@ -14,17 +14,24 @@ build:
 
 requirements:
   host:
-    - python >=3.10
+    - python >=3.11
     - pip
     - setuptools
     - opencv
+  # Must cover everything `import fezrs` loads. Previously this listed fastapi,
+  # which the package does not use, while omitting pandas, rasterio, pillow and
+  # imagecodecs, all of which are imported at package import time - so a conda
+  # install failed on `import fezrs` with ModuleNotFoundError: rasterio.
   run:
-    - python >=3.10
+    - python >=3.11
     - numpy
+    - pillow
+    - pandas
+    - rasterio
     - matplotlib
-    - scikit-image
+    - imagecodecs
     - scikit-learn
-    - fastapi
+    - scikit-image
     - opencv
 
 
