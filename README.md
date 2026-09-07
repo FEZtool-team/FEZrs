@@ -113,11 +113,11 @@ We welcome contributions! To contribute:
 
 ## **Acknowledgment**
 
-Special thanks to [**Chakad Cafe**](https://www.chakadcoffee.com/) for the coffee that kept us fueled during development! ☕
+Special thanks to **Chakad Cafe** for the coffee that kept us fueled during development! ☕
 
 ## **License**
 
-This project is licensed under the [**Apache-2.0 license**.](https://github.com/FEZtool-team/FEZrs/edit/main/LICENSE)
+This project is licensed under the [**Apache-2.0 license**.](https://github.com/FEZtool-team/FEZrs/blob/main/LICENSE)
 
 
 
