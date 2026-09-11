@@ -98,6 +98,21 @@ def test_downstream_publish_workflows_chain_off_pypi_dispatch():
         assert "github.event.workflow_run.event == 'workflow_dispatch'" in workflow
 
 
+def test_conda_publish_workflow_sets_explicit_token_permissions():
+    """
+    workflow_run jobs inherit the default GITHUB_TOKEN scopes for the base
+    repo. An explicit permissions block keeps checkout working without write
+    access the conda upload does not need (issue #62).
+    """
+    workflow = (
+        PROJECT_ROOT / ".github" / "workflows" / "FEZrs_Conda_Publish.yml"
+    ).read_text(encoding="utf-8")
+
+    assert "permissions:" in workflow
+    assert "contents: read" in workflow
+    assert "contents: write" not in workflow
+
+
 # --- Declared dependencies match reality (issue #43) --------------------------
 
 
