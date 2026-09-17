@@ -15,7 +15,7 @@ The `filters` module provides a comprehensive suite of digital image processing 
             ▼                                   ▼
 [Linear Shift-Invariant Filters]     [Non-Linear Statistical Filters]
 ├─ MeanCalculator                    └─ MedianCalculator
-├─ GuassianCalculator
+├─ GaussianCalculator
 ├─ SobelCalculator
 └─ LaplacianCalculator
 ```
@@ -54,11 +54,11 @@ This approach minimizes edge artifacts and prevents artificial gradient boundari
 
 ## Comprehensive Class Specifications
 
-### GuassianCalculator` — Isotropic Low-Pass Smoothing
+### GaussianCalculator` — Isotropic Low-Pass Smoothing
 
 #### Scientific & Physical Objective
 
-The algorithmic goal of `GuassianCalculator` is to apply an isotropic low-pass filter to remove continuous high-frequency background noise (such as thermal electronic sensor noise or atmospheric scattering). This smoothing step helps maintain structural boundaries and edge locations more effectively than a standard unweighted box-average filter.
+The algorithmic goal of `GaussianCalculator` is to apply an isotropic low-pass filter to remove continuous high-frequency background noise (such as thermal electronic sensor noise or atmospheric scattering). This smoothing step helps maintain structural boundaries and edge locations more effectively than a standard unweighted box-average filter.
 
 #### Theoretical Foundation & Mathematical Formulations
 
@@ -102,10 +102,10 @@ In the frequency domain, the Fourier transform of a Gaussian kernel is itself a 
 
 ```Python
 from pathlib import Path
-from fezrs.tools.filters import GuassianCalculator
+from fezrs.tools.filters import GaussianCalculator
 
 # Initialize low-pass isotropic Gaussian engine
-gaussian_blur = GuassianCalculator(
+gaussian_blur = GaussianCalculator(
     tif_path=Path("./data/Landsat8_Band5.tif")
 )
 

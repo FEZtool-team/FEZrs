@@ -74,7 +74,7 @@ class Landsat8_Calculator(BaseTool):
         show_axis=False,
         colormap=None,
         show_colorbar=False,
-        filename_prefix="Tool_output",
+        filename_prefix=None,
         dpi=500,
         bbox_inches="tight",
         grid=False,
@@ -95,3 +95,8 @@ class Landsat8_Calculator(BaseTool):
             nrows,
             ncols,
         )
+
+
+# PEP 8 conformant alias; the underscored name is retained for compatibility
+# with existing code and remains exported.
+Landsat8Calculator = Landsat8_Calculator

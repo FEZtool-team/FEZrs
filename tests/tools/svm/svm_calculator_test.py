@@ -109,31 +109,34 @@ def test_validate_raises_error_when_samples_exceed_pixels(mock_svm_calculator):
         mock_svm_calculator._validate()
 
 
-def test_process_creates_rgb_stack(mock_svm_calculator):
+def test_process_raises_when_sample_collection_is_interrupted(mock_svm_calculator):
+    """
+    Pressing ESC previously left process() returning None with _output unset, so
+    the failure surfaced later as "Data not computed." from _export_file with no
+    indication of what had happened.
+    """
     with patch("fezrs.tools.svm.svm_calculator.io.concatenate_images") as mock_concat:
         mock_concat.return_value = MagicMock()
-        with patch("fezrs.tools.svm.svm_calculator.cv2.namedWindow"):
-            with patch("fezrs.tools.svm.svm_calculator.cv2.setMouseCallback"):
-                with patch("fezrs.tools.svm.svm_calculator.cv2.imshow"):
-                    with patch(
-                        "fezrs.tools.svm.svm_calculator.cv2.waitKey",
-                        return_value=27,
-                    ):
-                        with patch(
-                            "fezrs.tools.svm.svm_calculator.cv2.destroyAllWindows"
-                        ):
-                            mock_svm_calculator.process()
+        with (
+            patch(
+                "fezrs.tools.svm.svm_calculator.display_is_available",
+                return_value=True,
+            ),
+            patch("fezrs.tools.svm.svm_calculator.cv2.namedWindow"),
+            patch("fezrs.tools.svm.svm_calculator.cv2.setMouseCallback"),
+            patch("fezrs.tools.svm.svm_calculator.cv2.imshow"),
+            patch(
+                "fezrs.tools.svm.svm_calculator.cv2.waitKey",
+                return_value=27,
+            ),
+            patch("fezrs.tools.svm.svm_calculator.cv2.destroyAllWindows"),
+        ):
+            with pytest.raises(RuntimeError, match="interrupted before all"):
+                mock_svm_calculator.process()
 
-                            assert (
-                                mock_svm_calculator.normalized_bands["red"] is not None
-                            )
-                            assert (
-                                mock_svm_calculator.normalized_bands["green"]
-                                is not None
-                            )
-                            assert (
-                                mock_svm_calculator.normalized_bands["blue"] is not None
-                            )
+    assert mock_svm_calculator.normalized_bands["red"] is not None
+    assert mock_svm_calculator.normalized_bands["green"] is not None
+    assert mock_svm_calculator.normalized_bands["blue"] is not None
 
 
 def test_execute_calls_base_execute(mock_svm_calculator):
@@ -187,7 +190,7 @@ def test_execute_with_default_parameters(mock_svm_calculator):
         True,
         None,
         False,
-        "Tool_output",
+        None,
         500,
         "tight",
         False,
@@ -305,20 +308,26 @@ def _run_process_with_clicks(calculator, clicks):
             return 0
         return 27
 
-    with patch("fezrs.tools.svm.svm_calculator.cv2.namedWindow"):
-        with patch(
-            "fezrs.tools.svm.svm_calculator.cv2.setMouseCallback",
-            fake_set_mouse_callback,
-        ):
-            with patch("fezrs.tools.svm.svm_calculator.cv2.imshow"):
-                with patch(
-                    "fezrs.tools.svm.svm_calculator.cv2.waitKey",
-                    fake_wait_key,
-                ):
+    # The GUI is fully mocked here, so the display check must be forced on:
+    # otherwise these tests pass on a workstation and fail on headless CI.
+    with patch(
+        "fezrs.tools.svm.svm_calculator.display_is_available",
+        return_value=True,
+    ):
+        with patch("fezrs.tools.svm.svm_calculator.cv2.namedWindow"):
+            with patch(
+                "fezrs.tools.svm.svm_calculator.cv2.setMouseCallback",
+                fake_set_mouse_callback,
+            ):
+                with patch("fezrs.tools.svm.svm_calculator.cv2.imshow"):
                     with patch(
-                        "fezrs.tools.svm.svm_calculator.cv2.destroyAllWindows"
+                        "fezrs.tools.svm.svm_calculator.cv2.waitKey",
+                        fake_wait_key,
                     ):
-                        calculator.process()
+                        with patch(
+                            "fezrs.tools.svm.svm_calculator.cv2.destroyAllWindows"
+                        ):
+                            calculator.process()
 
 
 def test_nonsquare_training_samples_use_opencv_xy_as_numpy_yx():

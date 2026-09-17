@@ -10,7 +10,7 @@ The `enhancement` module delivers a comprehensive suite of linear and non-linear
                                           │
                                           ▼
                       ┌───────────────────────────────────────┐
-                      │    fezrs.tools.enhancement Module     │
+                      │    fezrs.tools.image_enhancement Module     │
                       └───────────────────┬───────────────────┘
                                           │
          ┌────────────────────────────────┴────────────────────────────────┐
@@ -96,7 +96,7 @@ $$I_{\text{eq}}(x, y) = \frac{1}{N} \sum_{j=1}^{\text{rank}(I(x, y))} \text{coun
 
 ```Python
 from pathlib import Path
-from fezrs.tools.enhancement import EqualizeCalculator
+from fezrs.tools.image_enhancement import EqualizeCalculator
 
 # Initialize global histogram equalization pipeline
 equalizer = EqualizeCalculator(nir_path=Path("./data/Hazy_NIR.tif"))
@@ -145,7 +145,7 @@ $$I_{\text{CLAHE}}(x, y) = \text{BilinearInterpolate}\left(T_{t_1}, T_{t_2}, T_{
 
 ```Python
 from pathlib import Path
-from fezrs.tools.enhancement import AdaptiveCalculator
+from fezrs.tools.image_enhancement import AdaptiveCalculator
 
 # Execute local adaptive contrast optimization via CLAHE
 clahe_engine = AdaptiveCalculator(
@@ -195,7 +195,7 @@ Where:
 
 ```Python
 from pathlib import Path
-from fezrs.tools.enhancement import GammaCalculator
+from fezrs.tools.image_enhancement import GammaCalculator
 
 # Initialize power-law gamma transformation engine
 gamma_corrector = GammaCalculator(

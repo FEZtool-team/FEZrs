@@ -276,7 +276,7 @@ def test_execute_with_default_parameters(mock_mosaic_calculator):
         False,
         "gray",
         False,
-        "Tool_output",
+        None,
         100,
         "tight",
         False,

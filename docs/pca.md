@@ -127,7 +127,25 @@ These higher-order components capture progressively smaller variations in the da
         
     - `swir2_path` (`str` | `Path`): File path to the Short-Wave Infrared 2 band raster layer.
         
-    - `selectBand` (`Literal["red","green","blue","nir","swir1","swir2", None]`): Optional parameter. Selects a specific input band to map against the component outputs during specialized diagnostic profiling.
+    - `component` (`int | None`): Principal component to inspect, numbered $1 \dots 6$ in order of decreasing explained variance. Required by `histogram_export()`.
+
+    - `standardize` (`bool`, default `False`): Decompose the **correlation** matrix instead of the covariance matrix, by scaling each band to unit variance first. `sklearn` decomposes the covariance matrix, which lets whichever band carries the widest digital-number range dominate the leading components regardless of how much information it holds. Standardized PCA is the usual choice for multispectral work where band ranges differ substantially.
+
+    - `selectBand` (`Literal["red","green","blue","nir","swir1","swir2", None]`): **Deprecated.** A band name that resolves to a fixed component index, emitting a `DeprecationWarning` naming the component it maps to.
+
+    > **Why `selectBand` was replaced.** A principal component is a linear combination of *all six* input bands, weighted by the corresponding eigenvector, so **no component corresponds to an input band**. The parameter indexed into a fixed name-to-index map, meaning `selectBand="red"` plotted the **first principal component** and titled the figure "Histogram of PCA Band Red" — attributing the output to a band that did not produce it. A user selecting `"swir2"` to inspect the SWIR2 response was shown the fifth component. The mapping order was also arbitrary: it followed the insertion order of the band dictionary in `FileHandler.__init__`, which is why it read `red, nir, blue, swir1, swir2, green` rather than any order a user would expect.
+
+#### Eigen-structure Accessors
+
+Both raise `RuntimeError` before `process()` has run.
+
+- `explained_variance_ratio_` (`np.ndarray`, shape `(6,)`): Share of total variance per component, ordered decreasing. On the bundled Landsat subset PC1 carries 90.6%, PC2 7.3% and PC3 1.8% — the strong concentration typical of multispectral imagery, where PC1 largely captures scene brightness.
+
+- `components_` (`np.ndarray`, shape `(6, 6)` as `(component, band)`): Eigenvector loadings, with band order given by `band_order`.
+
+    **Loadings, not variance share, are what identify a useful component.** A target is isolated by the component in which the diagnostic bands carry high loadings of *opposing* sign, and that component is frequently not the one with the most variance — PC1 usually just encodes albedo.
+
+> **Component signs are fixed.** Eigenvector signs are mathematically arbitrary, so without a convention the same scene can yield an inverted component image between runs, or between a scene and a crop of it. FEZrs forces the largest-magnitude loading of each component positive, making repeated runs directly comparable.
 
 #### Processing Pipeline Lifecycle (`process()`)
 

@@ -4,6 +4,7 @@ from matplotlib.pyplot import cm
 # Import module and files
 from fezrs.base import BaseTool
 from fezrs.tools.spectral_indices._division import divide_with_nan
+from fezrs.utils.radiometry_handler import apply_scaling, warn_if_not_reflectance
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -13,17 +14,22 @@ class NDWICalculator(BaseTool):
         self,
         nir_path: BandPathType,
         green_path: BandPathType,
+        scale_factor: float = 1.0,
+        offset: float = 0.0,
     ):
         super().__init__(nir_path=nir_path, green_path=green_path)
-        self.normalized_bands = self.files_handler.get_normalized_bands(
-            requested_bands=["nir", "green"]
+        self.source_bands = apply_scaling(
+            self.files_handler.get_bands(requested_bands=["nir", "green"]),
+            scale_factor=scale_factor,
+            offset=offset,
         )
+        warn_if_not_reflectance(self.source_bands, "NDWI")
 
     def _validate(self):
         pass
 
     def process(self):
-        nir, green = (self.normalized_bands[band] for band in ("nir", "green"))
+        nir, green = (self.source_bands[band] for band in ("nir", "green"))
 
         self._output = divide_with_nan(green - nir, nir + green)
         return self._output
@@ -36,10 +42,12 @@ class NDWICalculator(BaseTool):
         show_axis=False,
         colormap=cm.Grays,
         show_colorbar=True,
-        filename_prefix="Tool_output",
+        filename_prefix=None,
         dpi=1000,
         bbox_inches="tight",
         grid=True,
+        nrows=None,
+        ncols=None,
     ):
         return super().execute(
             output_path,
@@ -52,4 +60,6 @@ class NDWICalculator(BaseTool):
             dpi,
             bbox_inches,
             grid,
+            nrows,
+            ncols,
         )

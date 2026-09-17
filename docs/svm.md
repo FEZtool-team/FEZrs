@@ -106,9 +106,62 @@ $$\hat{y} = \arg\max_{k \in \{1, \dots, K\}} \sum_{m=1}^{K(K-1)/2} \mathbb{I}\le
     
 - `class_number` (`int`, default=`4`): Total number of discrete land-cover categories to classify ($K \ge 2$).
     
-- `sample_number` (`int`, default=`10`): Number of training pixels to collect per class ($\ge 1$).
+- `sample_number` (`int`, default=`10`): Number of training pixels to collect per class ($\ge 1$). Applies to the interactive path only.
+
+- `training_samples` (`Sequence[tuple] | None`, default `None`): Training locations as `(row, col, class_id)` triples. **When supplied, the GUI is skipped entirely.** This is the reproducible, scriptable and testable path, and the one to use for anything that has to be repeated or published.
+
+- `transform` (affine | `None`, default `None`): An affine transform — a `rasterio` `Affine`, or anything supporting `~transform * (x, y)` — used to interpret `training_samples` as **map coordinates** `(northing, easting)` in the raster's CRS rather than array indices. Training sites digitised over a basemap in a GIS carry coordinates, not row/column indices.
+
+- `evaluate` (`bool`, default `False`), `test_size` (`float`, default `0.3`), `random_state` (`int`, default `0`): Hold out a stratified test split and report accuracy. See Accuracy Assessment below.
+
+#### Reproducible Sample Collection
+
+```Python
+from fezrs import SVMCalculator
+
+classifier = SVMCalculator(
+    red_path="red.tif", green_path="green.tif", blue_path="blue.tif",
+    nir_path="nir.tif", swir1_path="swir_1.tif", swir2_path="swir_2.tif",
+    training_samples=[
+        (120, 340, 1), (122, 345, 1),   # water
+        (400, 210, 2), (405, 215, 2),   # forest
+    ],
+    evaluate=True,
+)
+classifier.execute(output_path="./exports/classification/")
+
+print(classifier.accuracy_, classifier.kappa_)
+print(classifier.confusion_matrix_)
+```
+
+With map coordinates from a GIS:
+
+```Python
+import rasterio
+
+with rasterio.open("nir.tif") as source:
+    transform = source.transform
+
+SVMCalculator(
+    ...,
+    training_samples=[(4176615.0, 320325.0, 1), ...],   # (northing, easting, class)
+    transform=transform,
+)
+```
+
+#### Accuracy Assessment
+
+Setting `evaluate=True` holds out a stratified `test_size` fraction, fits on the remainder, and populates:
+
+- `accuracy_` — overall accuracy on the held-out split.
+- `kappa_` — Cohen's $\kappa$, the standard agreement measure in the remote sensing literature, which corrects for agreement expected by chance.
+- `confusion_matrix_` — the full class-by-class error matrix, from which producer's and user's accuracies can be derived.
+
+`random_state` seeds the split, so a reported accuracy is reproducible. The final classifier is always fitted on the **full** training set; the split is used only for the estimate.
 
 #### Interactive Sample Collection Workflow
+
+Used only when `training_samples` is not supplied.
 
 1. Executing the module initializes an interactive OpenCV graphical canvas titled `"mouseClick"`, which displays a normalized RGB composite generated from the visible bands.
     
@@ -156,8 +209,12 @@ thematic_map = classifier.execute(
 
 ## Key Operational Considerations
 
-- **Headless Display Dependencies:** Because the tool uses `cv2.imshow` for interactive pixel selection, it requires an active graphical windowing system. Running this tool on headless cloud instances, Docker containers, or Jupyter notebooks without configuring a virtual framebuffer (such as `Xvfb`) will cause a terminal application crash.
-    
-- **Strict Coordinate Input Order:** The matrix construction logic maps labels based on the exact time sequence of user clicks. The first block of clicks is assigned to Class 1, the second to Class 2, and so on. If the user clicks targets out of order, the training dataset will contain incorrect labels, leading to flawed classification results.
+- **Reproducibility:** The interactive path cannot be reproduced. The training set depends on where the operator clicked, and there is no seed, no sample file and no record of which pixels were used, so two runs by two people produce different classifiers and neither can be repeated. **Pass `training_samples` for any result that has to be repeated, compared or published.**
+
+- **Headless Display Dependencies:** Interactive selection uses `cv2.imshow` and needs an active windowing system. Without one, Qt **aborts the process** rather than raising, so a caller cannot catch it and degrade gracefully. FEZrs checks for a display first and raises a catchable `RuntimeError` naming `training_samples` as the fix. Supplying `training_samples` skips the GUI entirely, so cloud instances, containers and notebooks need no virtual framebuffer.
+
+- **Interrupted Collection:** Closing the window with ESC before every sample is collected raises a `RuntimeError` stating how many samples were gathered. Previously `process()` returned `None`, leaving `_output` unset, and the failure surfaced later as `ValueError: Data not computed.` from the export step.
+
+- **Strict Coordinate Input Order:** In the interactive path the matrix construction logic maps labels based on the exact time sequence of user clicks. The first block of clicks is assigned to Class 1, the second to Class 2, and so on. If the user clicks targets out of order, the training dataset will contain incorrect labels, leading to flawed classification results. `training_samples` carries an explicit `class_id` per location and is immune to this.
     
 - **Feature Scaling Profiles:** While input bands are normalized to a standard $[0.0, 1.0]$ range, individual channels often retain significantly different underlying variances. Because SVM optimization is sensitive to scale variations across its input features, implementing an explicit standardization step can help improve overall classification accuracy.

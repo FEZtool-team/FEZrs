@@ -15,7 +15,19 @@ class Geoeye_Calculator(BaseTool):
         self.level = level
 
     def _validate(self):
-        number_of_bands = self.tif_normalized["tif"].shape[2]
+        shape = self.tif_normalized["tif"].shape
+
+        # A single-band raster is 2D, and indexing shape[2] on it raised
+        # IndexError: tuple index out of range, which says nothing about what
+        # the tool actually needs.
+        if len(shape) < 3:
+            raise ValueError(
+                "GeoeyeCalculator expects a multi-band raster, but "
+                f"{self.files_handler.band_paths.get('tif')} has shape {shape}. "
+                "Pass a stacked multispectral image, or use a single-band tool."
+            )
+
+        number_of_bands = shape[2]
 
         if not (0 <= self.level < number_of_bands):
             raise ValueError(
@@ -34,7 +46,7 @@ class Geoeye_Calculator(BaseTool):
         show_axis=True,
         colormap="gray",
         show_colorbar=False,
-        filename_prefix="Tool_output",
+        filename_prefix=None,
         dpi=500,
         bbox_inches="tight",
         grid=False,
@@ -55,3 +67,8 @@ class Geoeye_Calculator(BaseTool):
             nrows,
             ncols,
         )
+
+
+# PEP 8 conformant alias; the underscored name is retained for compatibility
+# with existing code and remains exported.
+GeoeyeCalculator = Geoeye_Calculator

@@ -101,10 +101,12 @@ class KMeansCalculator(BaseTool):
         show_axis=False,
         colormap=None,
         show_colorbar=False,
-        filename_prefix="Tool_output",
+        filename_prefix=None,
         dpi=500,
         bbox_inches="tight",
         grid=False,
+        nrows=None,
+        ncols=None,
     ):
         return super().execute(
             output_path,
@@ -117,4 +119,6 @@ class KMeansCalculator(BaseTool):
             dpi,
             bbox_inches,
             grid,
+            nrows,
+            ncols,
         )

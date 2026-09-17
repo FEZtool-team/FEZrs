@@ -1,6 +1,2 @@
-pytest==9.0.3
-
-gdal
-pyrsgis
-rasterio==1.5.0
-tensorflow
+# Test-only. Runtime dependencies live in requirements.txt.
+pytest>=8.0

@@ -39,7 +39,7 @@ Let an input image array $I$ contain quantized integer gray levels bounded withi
 
 $$\mathcal{G} = \{0, 1, 2, \dots, G-1\}$$
 
-Where $G$ represents the total number of gray levels (for standard 8-bit unsigned integer data, $G = 256$). A spatial offset vector is defined by its coordinate displacements:
+Where $G$ represents the total number of gray levels, set by the `levels` parameter (default $G = 64$). Input rasters are **not** assumed to already lie in $[0, G-1]$: the pipeline quantizes them into that range first, as described under Global Quantization below. A spatial offset vector is defined by its coordinate displacements:
 
 $$\mathbf{d} = (d_x, d_y)$$
 
@@ -127,15 +127,25 @@ $$\sigma_i = \sqrt{\sum_{i=0}^{G-1} \sum_{j=0}^{G-1} (i - \mu_i)^2 \cdot p(i, j)
 └──────────────────────────────┘          skimage per step                    └──────────────────────────────┘
 ```
 
-1. **Quantization Baseline:** The pipeline extracts the single-band raster array (typically the Near-Infrared band) and casts it to an 8-bit unsigned integer array (`uint8`).
-    
-2. **Sliding Window Trajectory:** A square window of user-defined size $W \times W$ slides across the image grid with a horizontal and vertical stride of 1 pixel. The window is anchored at the current pixel $(i, j)$ and extends down and to the right.
-    
-3. **Array Extraction:** For each window position, the local GLCM is extracted, normalized, and evaluated across the selected Haralick property configuration.
-    
-4. **Output Matrix Offset:** The resulting scalar texture metric is written to the upper-left coordinate index $[i, j]$ of the active window position within the output array.
-    
-5. **Border Behavior:** Every output pixel is computed. Near the right and bottom edges the requested $W \times W$ window extends past the image, so NumPy slicing clips it to the remaining pixels (a truncated window). There is no padding, and border pixels are not left uninitialized. Top and left pixels still have a full window because the window extends inward from $(i, j)$.
+1. **Global Quantization:** The pipeline extracts the single-band raster array (typically the Near-Infrared band) and **linearly quantizes** it to `levels` gray levels:
+
+    $$q(x) = \left\lfloor \frac{x - x_{\min}}{x_{\max} - x_{\min}} \cdot (L - 1) \right\rceil$$
+
+    The scaling uses the **whole-image** minimum and maximum, not a per-window range, so a texture value computed in one part of the scene is directly comparable with one computed elsewhere. That comparability is the entire purpose of a texture map: in lithological discrimination the signal is the texture *contrast between units*, which a per-window rescale would erase.
+
+    A constant band quantizes to all zeros. Non-finite pixels are excluded from the range and mapped to level 0.
+
+    > **This is a quantization, not a cast.** Earlier versions applied `numpy.array(..., dtype="uint8")`, which wraps **modulo 256**: DN 3311 became 239 and DN 6200 became 56, so radiometrically adjacent pixels landed at opposite ends of the gray-level range. On the bundled 16-bit example the correlation between the source band and the casted array was **-0.22**, meaning texture was computed on effectively scrambled data. Every 16-bit product — Landsat, Sentinel, ASTER — was affected. Linear quantization is monotonic and preserves gray-level ordering (correlation > 0.999 on the same band).
+
+2. **Sliding Window Trajectory:** A square window of user-defined size $W \times W$ slides across the image grid with a stride of 1 pixel. By default the window is **centered** on the current pixel $(i, j)$.
+
+3. **Array Extraction:** For each window position the local GLCM is built over every requested `distances` × `angles` pair, normalized, and evaluated for the selected Haralick property. The scalar written to the output is the **mean over all pairs**.
+
+4. **Output Matrix Registration:** The texture value for the neighbourhood centered on $(i, j)$ is written to index $[i, j]$, so the texture map stays registered to the source raster grid.
+
+    > **Spatial registration.** With `centered=False` the window is anchored at $(i, j)$ and extends down and to the right, which displaces the whole texture map by $\lfloor (W-1)/2 \rfloor$ pixels up and to the left relative to the input. At 30 m Landsat resolution with $W = 15$ that is a **210 m offset** — a georeferencing error once the result is exported as a georeferenced raster or overlaid on a geological map. The legacy behaviour remains available for reproducing older outputs.
+
+5. **Border Behavior:** Every output pixel is computed. Under the default centered window the array is **reflect-padded** by $\lfloor W/2 \rfloor$, so border pixels are evaluated over a full $W \times W$ neighbourhood rather than a truncated one. With `centered=False` the window is instead clipped at the right and bottom edges, giving those pixels a smaller sample.
 
 ### Interface Architecture
 
@@ -148,9 +158,25 @@ $$\sigma_i = \sqrt{\sum_{i=0}^{G-1} \sum_{j=0}^{G-1} (i - \mu_i)^2 \cdot p(i, j)
 
 $$\text{window\_size} \ge 3$$
 
-- `propery` (`str`): Target Haralick feature name selection. Must match one of the following strings:
+- `property` (`str`): Target Haralick feature name selection. Must match one of the following strings:
     
     - `"contrast"`, `"dissimilarity"`, `"homogeneity"`, `"ASM"`, `"energy"`, `"correlation"`.
+
+    > The original misspelling `propery` is still accepted so existing code keeps working. Passing both raises `ValueError`.
+
+- `levels` (`int`, default `64`): Number of gray levels to quantize to before building the co-occurrence matrix. Must satisfy $2 \le L \le 256$.
+
+    **Choosing this value matters, and 256 is usually the wrong answer.** A $W \times W$ window supplies only $(W-1) \cdot W \cdot 2$ ordered pairs — 12 for $W = 3$, 40 for $W = 5$. Distributing 12 pairs over a $256 \times 256$ matrix populates 0.018% of its cells, and the resulting `contrast` or `correlation` value then describes matrix sparsity rather than surface texture. 32–64 levels is the standard working range for windowed GLCM, which is why the default is 64. Raise `levels` only alongside a larger window.
+
+- `distances` (`Sequence[int]`, default `(1,)`): Pixel offsets $\mathbf{d}$ at which co-occurrence is evaluated. Larger offsets probe coarser texture scales.
+
+- `angles` (`Sequence[float]`, default `(0, \pi/4, \pi/2, 3\pi/4)`): Orientations in radians. Results are **averaged over every distance/angle pair**, which yields a rotation-invariant measure — the correct default for surface roughness and lithological discrimination, where the response should not depend on how the scene happens to be oriented.
+
+    Passing a single angle deliberately makes the measure **anisotropic**, which is what you want when the target is directional: bedding traces, foliation, dune crests or lineament fabric. Comparing the single-angle response across orientations is a way to extract structural azimuth.
+
+    > **Cost.** Texture is evaluated per pixel, so runtime scales with `len(distances) × len(angles)`. The four-angle default is roughly four times the cost of a single orientation.
+
+- `centered` (`bool`, default `True`): Center the analysis window on each pixel. See the spatial registration note above before setting this to `False`.
 
 #### Operational Validation (`_validate`)
 
@@ -158,13 +184,24 @@ The programmatic `_validate()` method enforces runtime constraints prior to code
 
 1. Verifies that `window_size` is an integer and an odd value greater than or equal to 3.
     
-2. Checks that `propery` is a valid string matching one of the six supported Haralick feature types (`contrast`, `dissimilarity`, `homogeneity`, `ASM`, `energy`, `correlation`).
+2. Checks that `property` is a valid string matching one of the six supported Haralick feature types (`contrast`, `dissimilarity`, `homogeneity`, `ASM`, `energy`, `correlation`).
     
-3. Confirms that the target single-band file path exists and is readable.
+3. Verifies that `levels` is an integer in $[2, 256]$.
+
+4. Verifies that `distances` is a non-empty sequence of positive integers and that `angles` is non-empty.
+
+5. Confirms that the target single-band file path exists and is readable.
 
 #### Return State (`process()`)
 
-Returns a 2D `numpy.ndarray` with the same `(height, width)` shape as the input image. Every pixel is assigned a texture value. Pixels whose $W \times W$ window would extend past the right or bottom edge are computed from the truncated in-bounds window rather than from padded or missing data.
+Returns a 2D `numpy.ndarray` with the same `(height, width)` shape as the input image. Every pixel is assigned a texture value, averaged over all requested distance/angle pairs. Under the default centered window every pixel — borders included — is evaluated over a full $W \times W$ neighbourhood via reflect padding.
+
+Progress is emitted through the standard `logging` module at `DEBUG` level on the `fezrs.tools.glcm.glcm_calculator` logger, so it is silent by default. Enable it with:
+
+```Python
+import logging
+logging.getLogger("fezrs.tools.glcm.glcm_calculator").setLevel(logging.DEBUG)
+```
 
 #### Operational Implementation
 
@@ -176,7 +213,8 @@ from fezrs.tools.glcm import GLCMCalculator
 texture_engine = GLCMCalculator(
     nir_path=Path("./data/Landsat8_NIR.tif"),
     window_size=5,
-    propery="homogeneity"
+    property="homogeneity",
+    levels=64,                 # gray levels after quantization
 )
 
 # Run texture pipeline and save output map

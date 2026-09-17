@@ -67,10 +67,12 @@ class IRHSVCalculator(BaseTool):
         show_axis=True,
         colormap=None,
         show_colorbar=True,
-        filename_prefix="Tool_output",
+        filename_prefix=None,
         dpi=1000,
         bbox_inches="tight",
         grid=False,
+        nrows=None,
+        ncols=None,
     ):
         return super().execute(
             output_path,
@@ -83,4 +85,6 @@ class IRHSVCalculator(BaseTool):
             dpi,
             bbox_inches,
             grid,
+            nrows,
+            ncols,
         )

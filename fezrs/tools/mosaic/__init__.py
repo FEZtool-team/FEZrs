@@ -1,1 +1,1 @@
-from .mosaic_calculator import BaseTool
+from .mosaic_calculator import MosaicCalculator

@@ -96,6 +96,27 @@ def _rasterio_image_tifs(path: str):
     return rio.open(path)
 
 
+def _raster_profile(path: str) -> Dict:
+    """
+    Read the spatial referencing of a raster without loading its pixels.
+
+    Args:
+        path (str): Path to a raster file.
+
+    Returns:
+        Dict: CRS, affine transform, nodata value, dtype and shape.
+    """
+    with rio.open(path) as source:
+        return {
+            "crs": source.crs,
+            "transform": source.transform,
+            "nodata": source.nodata,
+            "dtype": source.dtypes[0],
+            "height": source.height,
+            "width": source.width,
+        }
+
+
 class FileHandler:
     """
     FileHandler is a utility class for managing and processing geospatial image files.
@@ -197,6 +218,69 @@ class FileHandler:
             for band in requested_bands
             if self.bands.get(band) is not None
         }
+
+    def get_bands(self, requested_bands: Optional[List[BandNameType]] = None):
+        """
+        Retrieve the requested image bands with their values as read.
+
+        Unlike :meth:`get_normalized_bands`, no rescaling is applied. Spectral
+        indices must use this accessor: a per-band min-max rescale gives each
+        band a different affine transform, which alters the relationships
+        *between* bands, and those relationships are the entire physical content
+        of a band ratio.
+
+        Args:
+            requested_bands (Optional[List[BandNameType]]): A list of band names
+                to return. If None, all available bands are returned.
+
+        Returns:
+            Dict[str, Optional[np.ndarray]]: A dictionary mapping band names to
+                their image data as read. Bands with no data are excluded.
+        """
+        if requested_bands is None:
+            requested_bands = list(self.bands.keys())
+
+        return {
+            band: self.bands[band]
+            for band in requested_bands
+            if self.bands.get(band) is not None
+        }
+
+    def get_raster_profile(
+        self, band: Optional[BandNameType] = None
+    ) -> Optional[Dict]:
+        """
+        Retrieve the spatial referencing of an input band.
+
+        Bands are loaded for computation through scikit-image, which discards
+        CRS, transform and nodata. This reads that metadata back via rasterio so
+        a result can be written out as a georeferenced raster rather than only
+        as a picture of one.
+
+        Args:
+            band (Optional[BandNameType]): Band to describe. Defaults to the
+                first band that was supplied.
+
+        Returns:
+            Optional[Dict]: Profile mapping, or None when no source is available.
+        """
+        if band is None:
+            candidates = [
+                name
+                for name, path in self.band_paths.items()
+                if path is not None
+            ]
+            if not candidates and self.tif_paths:
+                return _raster_profile(str(self.tif_paths[0]))
+            if not candidates:
+                return None
+            band = candidates[0]
+
+        path = self.band_paths.get(band)
+        if path is None or not os.path.exists(path):
+            return None
+
+        return _raster_profile(str(path))
 
     def get_metadata_bands(
         self, requested_bands: Optional[list[BandNameType]] = None

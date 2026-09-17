@@ -57,7 +57,7 @@ class SubDivCalculator(BaseTool):
         show_axis=False,
         colormap="gray",
         show_colorbar=False,
-        filename_prefix="Tool_output",
+        filename_prefix=None,
         dpi=500,
         bbox_inches="tight",
         grid=False,

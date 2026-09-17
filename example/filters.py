@@ -1,3 +1,11 @@
+"""
+Spatial filtering examples.
+
+Paths resolve relative to this file, so the script runs from any directory.
+"""
+
+from pathlib import Path
+
 from fezrs import (
     GaussianCalculator,
     LaplacianCalculator,
@@ -6,24 +14,18 @@ from fezrs import (
     SobelCalculator,
 )
 
-GaussianCalculator(
-    tif_path="./data/pan_img.tif",
-).execute(
-    output_path="./outputs/filter",
-)
+DATA = Path(__file__).parent / "data"
+OUTPUTS = Path(__file__).parent / "outputs"
 
-LaplacianCalculator(tif_path="./data/pan_img.tif", kernel_size=7).execute(
-    output_path="./outputs/filter",
-)
+PAN = DATA / "pan_img.tif"
+FILTER_OUTPUT = OUTPUTS / "filter"
 
-MeanCalculator(tif_path="./data/pan_img.tif").execute(
-    output_path="./outputs/filter",
-)
+GaussianCalculator(tif_path=PAN).execute(output_path=FILTER_OUTPUT)
 
-MedianCalculator(tif_path="./data/pan_img.tif", kernel_size=5).execute(
-    output_path="./outputs/filter",
-)
+LaplacianCalculator(tif_path=PAN, kernel_size=7).execute(output_path=FILTER_OUTPUT)
 
-SobelCalculator(tif_path="./data/pan_img.tif", kernel_size=7).execute(
-    output_path="./outputs/filter",
-)
+MeanCalculator(tif_path=PAN).execute(output_path=FILTER_OUTPUT)
+
+MedianCalculator(tif_path=PAN, kernel_size=5).execute(output_path=FILTER_OUTPUT)
+
+SobelCalculator(tif_path=PAN, kernel_size=7).execute(output_path=FILTER_OUTPUT)

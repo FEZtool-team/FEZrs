@@ -223,6 +223,8 @@ The discrete directional quadrant ($1$ through $4$) indicates the path taken by 
     
 - **Quadrant Code 4 ($\Delta NIR > 0 \text{ and } \Delta SWIR1 > 0$):** Co-registered elevation across both spectrum tracks. This typically points to complex land conversions, new urban concrete structures, or sensor illumination artifacts.
 
+- **Code 0 (no change):** A difference of exactly zero in NIR, SWIR1, or both. The four quadrants require a strict sign in *both* bands, so a pixel that is unchanged in one axis is not assigned a neighbour's class. A pair of identical dates therefore yields magnitude $0$ and direction $0$ everywhere.
+
 #### Interface Architecture
 
 - **Constructor Method (`__init__`) Input Arguments:**
@@ -237,7 +239,7 @@ The discrete directional quadrant ($1$ through $4$) indicates the path taken by 
         
     - `selecte` (`Literal["magnitude", "direction"]`): Selector pointing target execution to compute numerical scalar distances or integer category labels.
     
-- **Return State (`process()`):** Returns a `numpy.ndarray` array containing floating-point Euclidean distances or integer categorical maps ($1 \le x \le 4$).
+- **Return State (`process()`):** Returns a `numpy.ndarray` array containing floating-point Euclidean distances or integer categorical maps ($0 \le x \le 4$), where $0$ is no change.
 
 #### Execution Implementation
 

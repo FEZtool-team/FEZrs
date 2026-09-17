@@ -33,10 +33,12 @@ class MeanCalculator(BaseTool):
         show_axis=False,
         colormap="gray",
         show_colorbar=False,
-        filename_prefix="Tool_output",
+        filename_prefix=None,
         dpi=1000,
         bbox_inches="tight",
         grid=False,
+        nrows=None,
+        ncols=None,
     ):
         return super().execute(
             output_path,
@@ -49,4 +51,6 @@ class MeanCalculator(BaseTool):
             dpi,
             bbox_inches,
             grid,
+            nrows,
+            ncols,
         )
