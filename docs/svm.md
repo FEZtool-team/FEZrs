@@ -1,26 +1,22 @@
 # SVM (Support Vector Machine)
 ## Overview
 
-The `svm` module implements a Supervised Support Vector Machine (SVM) classification architecture designed for land-cover mapping and thematic feature extraction from multi-spectral satellite imagery. The module bridges machine learning workflows and interactive geospatial data engineering by providing an integrated graphical interface for manual training site selection.
+The `svm` module implements a Supervised Support Vector Machine (SVM) classification architecture designed for land-cover mapping and thematic feature extraction from multi-spectral satellite imagery.
 
-Using an interactive OpenCV window, analysts select training coordinates directly on a live RGB preview of the image. The class extracts the underlying six-dimensional spectral profiles at those specific coordinates, trains an SVM model using a soft-margin Radial Basis Function (RBF) kernel, and classifies the remaining pixels across the entire spatial grid.
+Training locations can be supplied programmatically as `(row, col, class_id)` triples (`training_samples`). That is the reproducible, scriptable path. When they are omitted, an OpenCV window collects clicks on a live RGB preview. Either way, the class reads the six **raw loaded band values** at those coordinates, trains `sklearn.svm.SVC` with a soft-margin Radial Basis Function (RBF) kernel (`gamma="scale"`, $C=1.0$), and classifies every pixel in the scene.
 
 ```
                    [6 Raster Bands Paths List]
                                 │
+              ┌─────────────────┴──────────────────┐
+              ▼                                    ▼
+ [training_samples triples]              [OpenCV RGB preview]
+  (row, col, class_id)                   display-only [0,1] canvas;
+  skips the GUI entirely                 left-clicks if no samples
+              └─────────────────┬──────────────────┘
                                 ▼
          ┌──────────────────────────────────────────────┐
-         │     OpenCV Graphical UI Processing Frame     │ ──► Generates [0,1] normalized RGB canvas
-         └──────────────────────┬───────────────────────┘
-                                │
-                                ▼
-         ┌──────────────────────────────────────────────┐
-         │  Interactive Coordinate Capture Subroutine   │ ──► Left-clicks sequentially register locations
-         └──────────────────────┬───────────────────────┘     for $K$ classes $\times$ $N$ samples.
-                                │
-                                ▼
-         ┌──────────────────────────────────────────────┐
-         │  Spectral Signature Matrix Ingestion ($X$)   │ ──► Pulls multi-spectral feature vectors:
+         │  Spectral Signature Matrix Ingestion ($X$)   │ ──► Raw loaded band values:
          └──────────────────────┬───────────────────────┘     $\mathbf{x} \in \mathbb{R}^6$ per training pixel.
                                 │
                                 ▼
@@ -42,15 +38,21 @@ Using an interactive OpenCV window, analysts select training coordinates directl
 
 ### Feature Representation Space
 
-Each independent image pixel is treated as a distinct statistical sample in a six-dimensional spectral space. The feature vector $\mathbf{x}$ for a given coordinate is formed by stacking its normalized reflectance values from the six available bands:
+Each independent image pixel is treated as a distinct statistical sample in a six-dimensional spectral space. The feature vector $\mathbf{x}$ is stacked from the **values as loaded from disk** (`skimage.io.imread(...).astype(float)` through `FileHandler.get_images_collection()`). **No per-band min–max rescale and no digital-number-to-reflectance conversion is applied to the classifier features.**
 
-$$\mathbf{x} = \begin{bmatrix} x_{\text{Red}} & x_{\text{Green}} & x_{\text{Blue}} & x_{\text{NIR}} & x_{\text{SWIR1}} & x_{\text{SWIR2}} \end{bmatrix}^T \in \mathbb{R}^6$$
+The six bands `SVMCalculator` always receives, in `FileHandler.band_paths` insertion order:
 
-The complete training array gathered via the user interface consists of $N_{\text{train}}$ examples:
+$$\mathbf{x} = \begin{bmatrix} x_{\text{Red}} & x_{\text{NIR}} & x_{\text{Blue}} & x_{\text{SWIR1}} & x_{\text{SWIR2}} & x_{\text{Green}} \end{bmatrix}^T \in \mathbb{R}^6$$
+
+That is the column layout of `classifier_.support_vectors_`. The RBF kernel depends only on Euclidean distance, so permuting the axes does not change the predicted map.
+
+The optional OpenCV window min–max normalizes **only the RGB preview** to $[0, 1]$ so the composite is displayable. That preview scaling is not reused for training or prediction. If the files already hold reflectance (or any other scaled product), those are the values the SVM sees; if they hold raw digital numbers, those are the values the SVM sees. FEZrs does not read scale/offset metadata.
+
+The complete training array consists of $N_{\text{train}}$ examples:
 
 $$\mathcal{D} = \left\{ (\mathbf{x}_i, y_i) \mid \mathbf{x}_i \in \mathbb{R}^6, \,\, y_i \in \{1, 2, \dots, K\} \right\}_{i=1}^{N_{\text{train}}}$$
 
-Where $K$ represents the total number of target land-cover classes, and $N_{\text{train}} = K \times \text{sample\_number}$.
+Where $K$ is the number of land-cover classes. On the interactive path $N_{\text{train}} = K \times \text{sample\_number}$. On the programmatic path $N_{\text{train}}$ is the length of `training_samples`.
 
 ### The Binary Maximal Margin Classifier
 
@@ -217,4 +219,4 @@ thematic_map = classifier.execute(
 
 - **Strict Coordinate Input Order:** In the interactive path the matrix construction logic maps labels based on the exact time sequence of user clicks. The first block of clicks is assigned to Class 1, the second to Class 2, and so on. If the user clicks targets out of order, the training dataset will contain incorrect labels, leading to flawed classification results. `training_samples` carries an explicit `class_id` per location and is immune to this.
     
-- **Feature Scaling Profiles:** While input bands are normalized to a standard $[0.0, 1.0]$ range, individual channels often retain significantly different underlying variances. Because SVM optimization is sensitive to scale variations across its input features, implementing an explicit standardization step can help improve overall classification accuracy.
+- **Feature scaling is the caller's responsibility.** Training and prediction use the raw loaded bands. An RBF kernel with $\gamma = \text{"scale"}$ is sensitive to the relative range of each axis: a 16-bit SWIR band sitting next to an 8-bit visible band will dominate the distance. Convert to reflectance, or otherwise scale the files, *before* passing them in if that is what the analysis requires. The RGB preview normalization is display-only and does not leak into the feature matrix.

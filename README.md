@@ -49,16 +49,13 @@ mamba install FEZtool::fezrs
 Example of applying a Gaussian filter to an image:
 
 ```python
-from fezrs import EqualizeRGBCalculator
+from fezrs import GaussianCalculator
 
-equalize = EqualizeRGBCalculator(
-    blue_path="path/to/your/image_band.tif",
-    green_path="path/to/your/image_band.tif",
-    red_path="path/to/your/image_band.tif",
+gaussian = GaussianCalculator(
+    tif_path="path/to/your/image_band.tif",
 )
 
-equalize.execute(output_path="./your/export/path")
-equalize.histogram_export(output_path="./your/export/path")
+gaussian.execute(output_path="./your/export/path")
 ```
 
 ## **Modules**
