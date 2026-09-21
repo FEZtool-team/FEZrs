@@ -113,6 +113,14 @@ def test_validate_accepts_valid_configuration(calculator):
     calculator._validate()
 
 
+def test_process_rejects_even_kernel_size(calculator):
+    """Issue #66: process() must run _validate(), not only execute()."""
+    calculator.kernel_size = 4
+
+    with pytest.raises(ValueError, match="kernel_size"):
+        calculator.process()
+
+
 def test_process_returns_numpy_array(calculator):
     result = calculator.process()
 

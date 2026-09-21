@@ -86,6 +86,40 @@ def test_execute_calls_validate_and_process():
     assert tool._process_called is True
 
 
+def test_process_runs_validate_without_execute():
+    """
+    Issue #66: every calculator overrides process() and almost none called
+    _validate(), so process() then to_raster() skipped the guards execute()
+    runs. BaseTool wraps subclass process() so validation is not path-dependent.
+    """
+    tool = DummyTool()
+
+    tool.process()
+
+    assert tool._validate_called is True
+    assert tool._process_called is True
+
+
+def test_process_wrapper_is_on_every_public_calculator():
+    import inspect
+
+    import fezrs
+
+    missing = []
+    for name in fezrs.__all__:
+        cls = getattr(fezrs, name)
+        if not inspect.isclass(cls) or not issubclass(cls, BaseTool):
+            continue
+        if cls is BaseTool:
+            continue
+        if "process" in cls.__dict__ and not getattr(
+            cls.process, "_fezrs_runs_validate", False
+        ):
+            missing.append(name)
+
+    assert missing == []
+
+
 def test_execute_returns_self():
     tool = DummyTool()
 

@@ -1,5 +1,6 @@
 # Import packages and libraries
 from abc import ABC
+from functools import wraps
 
 import numpy as np
 import rasterio as rio
@@ -43,6 +44,29 @@ class BaseTool(ABC):
 
         self.files_handler = FileHandler(**bands_path)
 
+    def __init_subclass__(cls, **kwargs):
+        """
+        Wrap each subclass ``process()`` so ``_validate()`` always runs.
+
+        ``execute()`` already calls ``_validate()``, but ``process()`` then
+        ``to_raster()`` is a documented second path, and nearly every calculator
+        overrides ``process()`` without calling ``super().process()`` or
+        ``self._validate()``. Wrapping here keeps the two paths equally guarded
+        without a one-line edit in every calculator.
+        """
+        super().__init_subclass__(**kwargs)
+        process = cls.__dict__.get("process")
+        if process is None or getattr(process, "_fezrs_runs_validate", False):
+            return
+
+        @wraps(process)
+        def process_with_validate(self, *args, **kwargs):
+            self._validate()
+            return process(self, *args, **kwargs)
+
+        process_with_validate._fezrs_runs_validate = True
+        cls.process = process_with_validate
+
     def _validate(self):
         """
         Abstract method for validating input data or configuration.
@@ -55,7 +79,9 @@ class BaseTool(ABC):
         """
         Abstract method for processing data.
 
-        Should be implemented by subclasses to perform the main computation.
+        Subclasses override this with the main computation. ``_validate()`` is
+        invoked automatically before the subclass body runs, including when
+        the caller uses ``process()`` without going through ``execute()``.
         """
         self._validate()
         raise NotImplementedError("Subclasses should implement this method")

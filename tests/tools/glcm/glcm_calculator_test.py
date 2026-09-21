@@ -427,6 +427,27 @@ def test_quantization_of_constant_band_is_all_zero():
     assert np.all(quantized == 0)
 
 
+def test_quantization_ignores_nan_fill_when_setting_the_range():
+    """
+    Issue #66: a declared nodata fill of -9999 used to set one end of the
+    global min/max, so most gray levels were spent on the gap between fill and
+    data. Quantization already skips non-finite values; load-time masking
+    turns the fill into NaN so this path is the one that runs.
+    """
+    scene = np.arange(64, dtype=float).reshape(8, 8)
+    filled = scene.copy()
+    filled[0, :] = -9999.0
+
+    dragged = quantize_to_levels(filled, DEFAULT_LEVELS)
+    masked = filled.copy()
+    masked[0, :] = np.nan
+    after_mask = quantize_to_levels(masked, DEFAULT_LEVELS)
+    expected = quantize_to_levels(scene[1:, :], DEFAULT_LEVELS)
+
+    np.testing.assert_array_equal(after_mask[1:, :], expected)
+    assert len(np.unique(dragged[1:, :])) < len(np.unique(after_mask[1:, :]))
+
+
 def test_quantization_is_global_not_per_window():
     """
     Two windows with the same local spread but different absolute levels must

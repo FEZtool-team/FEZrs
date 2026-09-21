@@ -250,9 +250,6 @@ class SVMCalculator(BaseTool):
         return self._output
 
     def process(self):
-
-        self._validate()
-
         if self.training_samples is not None:
             features, labels = self._collect_features(self.training_samples)
             return self._fit_and_predict(features, labels)

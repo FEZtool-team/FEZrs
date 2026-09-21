@@ -156,6 +156,8 @@ Both output files are automatically named using the class prefix `Mosaic_` combi
 
 Returns a `Path` object pointing to the newly written GeoTIFF file location on disk. This file path is stored directly in `self._output`, allowing it to be passed directly to downstream calculators for chained processing.
 
+`MosaicCalculator` is the one tool that does **not** take the `process()` then `to_raster()` route. The mosaic product is a file: `_export_file` writes the merged GeoTIFF itself and stores that path in `_output`, rather than an in-memory array. Call `execute()` to produce the raster; `to_raster()` is not applicable here.
+
 ### Operational Implementation
 
 ```Python

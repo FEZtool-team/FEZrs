@@ -8,6 +8,57 @@ from typing import Optional, Dict, List
 from fezrs.utils.type_handler import BandPathType, BandNameType, BandTypes
 
 
+def _mask_nodata(array: np.ndarray, path: BandPathType) -> np.ndarray:
+    """
+    Replace a raster's declared nodata fill with NaN.
+
+    ``skimage.io.imread`` (and ``plt.imread``) return the fill as ordinary
+    values. A Landsat/Sentinel margin of -9999 then participates in ratios
+    (NDVI of the fill is 0) and in global min/max (GLCM quantization spends
+    most of its gray levels on the gap between fill and data).
+
+    Rasterio is used only to read the profile; if that fails the array is
+    returned unchanged so non-georeferenced inputs keep working.
+    """
+    try:
+        nodata = _raster_profile(str(path)).get("nodata")
+    except Exception:
+        return array
+
+    if nodata is None:
+        return array
+
+    masked = np.asarray(array, dtype=float)
+    if isinstance(nodata, (float, np.floating)) and np.isnan(nodata):
+        return masked
+
+    return np.where(masked == nodata, np.nan, masked)
+
+
+def _as_single_band(
+    array: np.ndarray, band_name: str, path: BandPathType
+) -> np.ndarray:
+    """
+    Require a named band path to be a 2-D array.
+
+    A stacked multi-band GeoTIFF handed to ``nir_path`` / ``red_path`` is a
+    common mistake with a stacked delivery. Arithmetic then broadcasts across
+    the extra axis and writes a plausible-looking, wrong product.
+
+    A trailing or leading singleton dimension is squeezed: some readers return
+    ``(height, width, 1)`` for a single-band file.
+    """
+    squeezed = np.squeeze(array)
+    if squeezed.ndim == 2:
+        return squeezed
+
+    raise ValueError(
+        f"{band_name}_path must be a single-band raster, but {path} has "
+        f"shape {array.shape}. Pass a 2-D band, not a stacked multi-band "
+        "GeoTIFF."
+    )
+
+
 def _load_image(path: Optional[BandPathType]) -> Optional[np.ndarray]:
     """
     Loads an image from the specified file path if it exists.
@@ -24,7 +75,7 @@ def _load_image(path: Optional[BandPathType]) -> Optional[np.ndarray]:
     # TODO - Add a check for file type, files must be in (*.tiff | *.tif) format
 
     if path and os.path.exists(path):
-        return io.imread(path).astype(float)
+        return _mask_nodata(io.imread(path).astype(float), path)
     elif path is None:
         return None
     else:
@@ -34,6 +85,9 @@ def _load_image(path: Optional[BandPathType]) -> Optional[np.ndarray]:
 def _normalize(image: Optional[np.ndarray]) -> Optional[np.ndarray]:
     """
     Normalize a given image array to the range [0, 1].
+
+    Nodata (NaN) is ignored when computing the extrema so a fill value cannot
+    collapse the stretch, and is preserved in the result.
 
     Args:
         image (Optional[np.ndarray]): The input image as a NumPy array.
@@ -52,7 +106,16 @@ def _normalize(image: Optional[np.ndarray]) -> Optional[np.ndarray]:
     if not isinstance(image, np.ndarray):
         raise TypeError(f"Expected numpy.ndarray, but got {type(image)}")
 
-    return (image - np.min(image)) / (np.max(image) - np.min(image))
+    finite = np.isfinite(image)
+    if not finite.any():
+        return np.full(image.shape, np.nan, dtype=float)
+
+    low = np.min(image[finite])
+    high = np.max(image[finite])
+    if high == low:
+        return np.where(finite, 0.0, np.nan)
+
+    return np.where(finite, (image - low) / (high - low), np.nan)
 
 
 def _metadata_image(path: str) -> Dict[str, np.ndarray]:
@@ -73,8 +136,8 @@ def _metadata_image(path: str) -> Dict[str, np.ndarray]:
             - "height": The height of the image (number of rows).
             - "width": The width of the image (number of columns).
     """
-    image_plt = plt.imread(path)
-    image_skimage = io.imread(path)
+    image_plt = _mask_nodata(plt.imread(path), path)
+    image_skimage = _mask_nodata(io.imread(path), path)
     return {
         "image_plt": image_plt,
         "image_skimage": image_skimage,
@@ -138,8 +201,8 @@ class FileHandler:
         get_metadata_bands(requested_bands: Optional[List[BandNameType]] = None) -> Dict[str, Dict]:
             Retrieve metadata (image data and dimensions) for the requested image bands. If no bands are specified, metadata for all available bands is returned.
 
-        get_images_collection() -> skimage.io.ImageCollection:
-            Retrieve a collection of all available image bands as an ImageCollection.
+        get_images_collection() -> list:
+            Retrieve the loaded arrays for every supplied band, in band_paths order.
 
         get_rasterio_tifs(requested_bands: Optional[List[BandNameType]] = None):
             Retrieve rasterio objects for all TIFF paths in tif_paths. Raises ValueError if tif_paths is None.
@@ -195,6 +258,13 @@ class FileHandler:
         self.bands: BandTypes = {
             key: _load_image(path) for key, path in self.band_paths.items()
         }
+
+        # Named band paths are one plane. ``tif`` is the exception: Geoeye
+        # (and similar import tools) index a stacked multi-band raster.
+        for key, array in self.bands.items():
+            if array is None or key == "tif":
+                continue
+            self.bands[key] = _as_single_band(array, key, self.band_paths[key])
 
     def get_normalized_bands(
         self, requested_bands: Optional[List[BandNameType]] = None
@@ -304,20 +374,38 @@ class FileHandler:
             path = self.band_paths.get(band)
             if path and os.path.exists(path):
                 metadata[band] = _metadata_image(path)
+                if band != "tif":
+                    # ``image_plt`` can be RGB even for a single-band TIFF;
+                    # tools compute on ``image_skimage``.
+                    metadata[band]["image_skimage"] = _as_single_band(
+                        metadata[band]["image_skimage"], band, path
+                    )
+                    metadata[band]["height"] = int(
+                        metadata[band]["image_skimage"].shape[0]
+                    )
+                    metadata[band]["width"] = int(
+                        metadata[band]["image_skimage"].shape[1]
+                    )
 
         return metadata
 
     def get_images_collection(self) -> any:
         """
-        Retrieve a collection of all available image bands.
+        Retrieve the loaded arrays for every supplied band.
 
         Returns:
-            skimage.io.ImageCollection: A collection of images loaded from the available band file paths.
+            list[np.ndarray]: Band arrays in ``band_paths`` insertion order,
+            already float-converted and nodata-masked.
         """
-        image_columns = {
-            key: value for key, value in self.band_paths.items() if value is not None
-        }
-        return io.imread_collection(list(image_columns.values()))
+        # Reuse the arrays already loaded into ``self.bands`` so PCA/SVM see
+        # the same nodata-masked floats as the rest of the library. Returning
+        # a list (not ImageCollection) is enough: callers only iterate and
+        # concatenate. Order stays the ``band_paths`` insertion order.
+        return [
+            self.bands[key]
+            for key, path in self.band_paths.items()
+            if path is not None
+        ]
 
     def get_rasterio_tifs(self, requested_bands: Optional[list[BandNameType]] = None):
         """

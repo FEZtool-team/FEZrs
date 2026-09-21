@@ -121,8 +121,6 @@ class GLCMCalculator(BaseTool):
         )
 
     def process(self):
-        self._validate()
-
         height = self.metadata_bands["nir"]["height"]
         width = self.metadata_bands["nir"]["width"]
 
