@@ -225,9 +225,33 @@ class BaseTool(ABC):
             )
 
         array = np.asarray(self._output)
+        grid = (profile["height"], profile["width"])
+
+        # The source band fixes the grid the output must sit on, which settles
+        # the axis order without guessing. RGB and colour-space tools return
+        # (height, width, channels); writing that as band-first put `height`
+        # bands of `width x channels` pixels at the source transform -- a raster
+        # that opens without complaint and is wrong everywhere.
         if array.ndim == 2:
+            if array.shape != grid:
+                raise ValueError(
+                    f"Output shape {array.shape} does not match the source "
+                    f"raster grid {grid}, so it cannot be written with the "
+                    "source transform."
+                )
             array = array[np.newaxis, :, :]
-        elif array.ndim != 3:
+        elif array.ndim == 3:
+            if array.shape[1:] == grid:
+                pass  # already (bands, height, width)
+            elif array.shape[:2] == grid:
+                array = np.moveaxis(array, -1, 0)
+            else:
+                raise ValueError(
+                    f"Output shape {array.shape} matches the source raster grid "
+                    f"{grid} on neither axis order, so it cannot be written with "
+                    "the source transform."
+                )
+        else:
             raise ValueError(
                 f"Cannot write an array with {array.ndim} dimensions as a raster."
             )

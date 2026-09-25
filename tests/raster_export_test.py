@@ -103,7 +103,11 @@ def test_continuous_output_defaults_to_float32_with_nan_nodata(tmp_path):
 
 def test_integer_label_map_keeps_an_integer_dtype(tmp_path):
     """A classification is a label map; writing it as float with NaN is wrong."""
-    labels = np.array([[1, 2], [2, 1]], dtype=int)
+    # On the stub's 4x4 grid: a label map smaller than its source grid is a bug,
+    # and to_raster now refuses it rather than writing it misregistered.
+    labels = np.array(
+        [[1, 2, 2, 1], [2, 1, 1, 2], [1, 1, 2, 2], [2, 2, 1, 1]], dtype=int
+    )
 
     path = _Tool(labels).to_raster(tmp_path / "classes.tif")
 
@@ -220,3 +224,38 @@ def test_raster_profile_is_none_without_a_source():
     from fezrs.utils.file_handler import FileHandler
 
     assert FileHandler().get_raster_profile() is None
+
+
+# --- Axis order and grid (issue #66) ------------------------------------------
+
+
+def test_channel_last_output_is_written_as_bands(tmp_path):
+    """
+    RGB and colour-space tools return (height, width, channels). to_raster()
+    treated every 3-D array as (bands, height, width), so a 4x4 RGB composite
+    was written as 4 bands of 4x3 pixels -- a raster that opens cleanly and is
+    wrong everywhere.
+    """
+    rgb = np.stack([CONTINUOUS, CONTINUOUS * 2, CONTINUOUS * 3], axis=2)
+    assert rgb.shape == (4, 4, 3)
+
+    path = _Tool(rgb).to_raster(tmp_path / "rgb.tif")
+
+    with rasterio.open(path) as source:
+        assert (source.count, source.height, source.width) == (3, 4, 4)
+        for index in range(3):
+            np.testing.assert_allclose(
+                source.read(index + 1), rgb[:, :, index].astype("float32")
+            )
+
+
+def test_output_off_the_source_grid_is_refused(tmp_path):
+    """
+    Writing an array whose shape does not match the source grid at the source
+    transform produces a misregistered raster. Refuse instead.
+    """
+    with pytest.raises(ValueError, match="does not match the source raster grid"):
+        _Tool(np.zeros((3, 5))).to_raster(tmp_path / "wrong.tif")
+
+    with pytest.raises(ValueError, match="neither axis order"):
+        _Tool(np.zeros((2, 3, 5))).to_raster(tmp_path / "wrong3d.tif")
