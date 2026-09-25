@@ -37,6 +37,7 @@ class Geoeye_Calculator(BaseTool):
     def process(self):
         self.tif_normalize_level = self.tif_normalized["tif"][:, :, self.level]
         self._output = self.tif_normalize_level
+        return self._output
 
     def execute(
         self,

@@ -75,14 +75,21 @@ class KMeansCalculator(BaseTool):
 
         # Initialize and fit the KMeans model
         kmeans = KMeans(n_clusters=n_clusters, random_state=random_state)
-        kmeans.fit(image_reshape)
+
+        # Cluster valid pixels only. A declared fill is one repeated value, so
+        # left in it becomes a cluster of its own and takes one of the
+        # n_clusters away from the surface being mapped.
+        valid = np.isfinite(image_reshape[:, 0])
+        kmeans.fit(image_reshape[valid])
 
         # Get cluster centers and labels
         cluster_centers = kmeans.cluster_centers_
-        cluster_labels = kmeans.labels_
 
-        # Reshape the clustered labels back into the image dimensions
-        clusterd_image = cluster_centers[cluster_labels].reshape(
+        # Reshape the clustered labels back into the image dimensions. Nodata
+        # pixels were not clustered and come back as NaN.
+        clustered = np.full(image_reshape.shape[0], np.nan)
+        clustered[valid] = cluster_centers[kmeans.labels_, 0]
+        clusterd_image = clustered.reshape(
             self.metadata_bands["nir"]["height"], self.metadata_bands["nir"]["width"]
         )
 

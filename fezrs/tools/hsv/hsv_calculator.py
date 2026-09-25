@@ -5,6 +5,7 @@ from skimage.color import rgb2hsv
 
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.utils.nodata_handler import apply_nodata, fill_invalid, invalid_mask
 from fezrs.utils.type_handler import BandPathType
 
 HSVChannel = Literal[
@@ -44,7 +45,13 @@ class HSVCalculator(BaseTool):
             self.normalized_bands[band] for band in ("nir", "blue", "green")
         )
 
-        hsv_calculated = rgb2hsv(np.dstack((nir, green, blue)))
+        composite = np.dstack((nir, green, blue))
+        mask = invalid_mask(composite)
+        # rgb2hsv turns NaN into ordinary-looking hue and saturation values.
+        hsv_calculated = apply_nodata(
+            rgb2hsv(fill_invalid(composite, mask) if mask is not None else composite),
+            mask,
+        )
 
         channels = {
             "hsv": hsv_calculated,

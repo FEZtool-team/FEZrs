@@ -193,7 +193,15 @@ class SVMCalculator(BaseTool):
                     f"extent ({height} x {width})."
                 )
 
-            features.append([band[pixel_row][pixel_col] for band in self.collection_bands])
+            sample = [band[pixel_row][pixel_col] for band in self.collection_bands]
+            if not np.all(np.isfinite(sample)):
+                raise ValueError(
+                    f"Training sample ({row}, {col}) falls on nodata: at least one "
+                    "band declares a fill value there. Move the sample onto valid "
+                    "data."
+                )
+
+            features.append(sample)
             labels.append(int(class_id))
 
         return np.asarray(features, dtype=float), np.asarray(labels, dtype=int)
@@ -212,6 +220,12 @@ class SVMCalculator(BaseTool):
         all_image_reshape = all_images.reshape(
             (height * width, len(self.collection_bands))
         )
+
+        if not np.all(np.isfinite(features)):
+            raise ValueError(
+                "A training sample falls on nodata: at least one band declares a "
+                "fill value there. Sample valid data only."
+            )
 
         fit_features, fit_labels = features, labels
 
@@ -243,7 +257,16 @@ class SVMCalculator(BaseTool):
         classifier = svm.SVC(gamma="scale")
         classifier.fit(features, labels)
 
-        prediction = classifier.predict(all_image_reshape)
+        # Classify valid pixels only. SVC rejects NaN outright, and a fill value
+        # given a class would read as a land-cover label rather than as the
+        # absence of data.
+        valid = np.all(np.isfinite(all_image_reshape), axis=1)
+        if valid.all():
+            prediction = classifier.predict(all_image_reshape)
+        else:
+            prediction = np.full(all_image_reshape.shape[0], np.nan)
+            if valid.any():
+                prediction[valid] = classifier.predict(all_image_reshape[valid])
 
         self.classifier_ = classifier
         self._output = prediction.reshape((height, width))
