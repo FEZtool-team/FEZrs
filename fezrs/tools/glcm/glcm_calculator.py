@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 from typing import Sequence, get_args
 from fezrs.base import BaseTool
+from fezrs.utils.nodata_handler import apply_nodata, invalid_mask
 from skimage.feature import graycomatrix, graycoprops
 from fezrs.utils.type_handler import BandPathType, PropertyGLCMType
 
@@ -119,6 +120,9 @@ class GLCMCalculator(BaseTool):
         self.nir_image = quantize_to_levels(
             self.metadata_bands["nir"]["image_skimage"], self.levels
         )
+        # Nodata is excluded from the quantization range above, so it cannot
+        # spend gray levels; it still has to be kept out of the texture itself.
+        self.nodata_mask = invalid_mask(self.metadata_bands["nir"]["image_skimage"])
 
     def process(self):
         height = self.metadata_bands["nir"]["height"]
@@ -162,7 +166,13 @@ class GLCMCalculator(BaseTool):
                 # over both gives the rotation invariant scalar.
                 self.result[i, j] = graycoprops(glcm, self.property).mean()
 
-        self._output = self.result
+        # A window that reaches into the fill measures the contrast between data
+        # and the fill level, not the surface. Along a scene edge that reads as
+        # a sharp texture boundary -- indistinguishable from a lithological
+        # contact -- so every pixel whose window touches nodata is NaN.
+        self._output = apply_nodata(
+            self.result, getattr(self, "nodata_mask", None), window=self.window_size
+        )
         return self._output
 
     def _validate(self):

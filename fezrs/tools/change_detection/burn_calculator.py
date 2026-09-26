@@ -1,4 +1,5 @@
 from fezrs.base import BaseTool
+from fezrs.utils.nodata_handler import apply_nodata, invalid_mask
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -39,7 +40,14 @@ class BurnCalculator(BaseTool):
         indices_before = (before_nir - before_swir2) / (before_nir + before_swir2)
         subtract_before_after = indices_before - indices_after
 
-        self._output = subtract_before_after > 0.7
+        burned = subtract_before_after > 0.7
+
+        # A boolean map cannot hold "no data", so a nodata pixel compared as
+        # False and was reported as unburned -- a confident claim about ground
+        # nobody observed. With nodata declared the map is float: 1 burned,
+        # 0 unburned, NaN unobserved. Without it, it stays boolean as before.
+        mask = invalid_mask(nir, swir2, before_nir, before_swir2)
+        self._output = apply_nodata(burned, mask)
         return self._output
 
     def execute(

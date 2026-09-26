@@ -1,3 +1,4 @@
+import numpy as np
 # Import packages and libraries
 import matplotlib.pyplot as plt
 from skimage import exposure, img_as_float
@@ -5,6 +6,7 @@ from skimage import exposure, img_as_float
 
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.utils.nodata_handler import apply_nodata, fill_invalid, invalid_mask
 from fezrs.utils.type_handler import BandPathType
 from fezrs.utils.histogram_handler import HistogramExportMixin
 
@@ -24,13 +26,48 @@ class AdaptiveCalculator(BaseTool, HistogramExportMixin):
     def _validate(self):
         pass
 
+    def _integer_scale(self) -> float:
+        """
+        The divisor img_as_float applies to the source band's integer type.
+
+        Falls back to the valid data range when the source type is not an
+        integer or cannot be read, which still lands the band in [0, 1].
+        """
+        try:
+            dtype = np.dtype(self.files_handler.get_raster_profile("nir")["dtype"])
+        except Exception:
+            dtype = None
+
+        if dtype is not None and np.issubdtype(dtype, np.integer):
+            return float(np.iinfo(dtype).max)
+
+        band = self.metadata_bands["nir"]["image_skimage"]
+        peak = float(np.nanmax(np.abs(band)))
+        return peak if peak > 0 else 1.0
+
     def process(self):
         nbins = 256
         float_image = img_as_float(self.metadata_bands["nir"]["image_skimage"])
+        mask = invalid_mask(float_image)
+
+        if mask is not None:
+            # CLAHE takes no mask. The fill is replaced by the valid median so it
+            # neither breaks the rescale nor biases tile histograms towards an
+            # extreme, then masked out of the result.
+            #
+            # Masking made the band float, so img_as_float no longer scales it
+            # into [-1, 1] the way it does an integer band, and CLAHE rejects
+            # it. Scale by the source integer type exactly as img_as_float
+            # would have: CLAHE bins over [0, 1], so a different scaling changes
+            # the result, and valid pixels should match the no-fill case.
+            float_image = fill_invalid(float_image, mask) / self._integer_scale()
+
         adaptive_image = exposure.equalize_adapthist(
-            float_image, clip_limit=self.clip_limit, nbins=nbins
+            float_image,
+            clip_limit=self.clip_limit,
+            nbins=nbins,
         )
-        self._output = adaptive_image
+        self._output = apply_nodata(adaptive_image, mask)
 
         return self._output
 

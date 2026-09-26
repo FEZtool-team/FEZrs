@@ -1,10 +1,41 @@
 # Import packages and libraries
 import numpy as np
 from cv2 import medianBlur
+from skimage.filters import median as skimage_median
 
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.utils.nodata_handler import apply_nodata, fill_invalid, invalid_mask
 from fezrs.utils.type_handler import BandPathType
+
+
+# OpenCV's median filter only accepts some dtype / kernel combinations: any
+# kernel on uint8, but only 3x3 and 5x5 on uint16, int16 and float32, and nothing
+# at all on float64. A 7x7 median on 16-bit Landsat or Sentinel data therefore
+# raised cv2.error, as does any band carrying a nodata fill (masked to float).
+_CV2_SMALL_KERNEL_DTYPES = (np.uint16, np.int16, np.float32)
+
+
+def median_filter(image: np.ndarray, kernel_size: int) -> np.ndarray:
+    """
+    Median filter for any dtype and any odd kernel size.
+
+    Uses OpenCV where it supports the combination, which keeps the established
+    output bit-identical, and scikit-image's exact median otherwise. Both
+    replicate the edge pixels at the border, so they agree there too.
+    """
+    array = np.asarray(image)
+
+    if array.dtype == np.uint8:
+        return medianBlur(array, ksize=kernel_size)
+    if kernel_size <= 5 and array.dtype.type in _CV2_SMALL_KERNEL_DTYPES:
+        return medianBlur(array, ksize=kernel_size)
+    if kernel_size <= 5 and np.issubdtype(array.dtype, np.floating):
+        # float64 -> float32 is exact for any 16-bit digital number.
+        return medianBlur(array.astype(np.float32), ksize=kernel_size)
+
+    footprint = np.ones((kernel_size, kernel_size), dtype=bool)
+    return skimage_median(array, footprint=footprint, mode="nearest")
 
 
 class MedianCalculator(BaseTool):
@@ -51,9 +82,17 @@ class MedianCalculator(BaseTool):
             raise ValueError("Invalid 'height' in tif metadata")
 
     def process(self):
-        self._output = medianBlur(
-            self.metadata_bands["tif"]["image_skimage"], ksize=self.kernel_size
-        )
+        image = self.metadata_bands["tif"]["image_skimage"]
+        mask = invalid_mask(image)
+
+        if mask is None:
+            self._output = median_filter(image, self.kernel_size)
+        else:
+            # A median that reaches into the fill is not a measurement, so any
+            # pixel whose window touches nodata is reported as NaN.
+            filtered = median_filter(fill_invalid(image, mask), self.kernel_size)
+            self._output = apply_nodata(filtered, mask, window=self.kernel_size)
+
         return self._output
 
     def execute(

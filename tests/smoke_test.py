@@ -392,10 +392,27 @@ def test_to_raster_writes_a_georeferenced_tif(name, bands, tmp_path):
     destination = tmp_path / f"{name}.tif"
     calculator.to_raster(destination)
 
+    # The written grid must be the input grid. An earlier version of this test
+    # asserted only that a CRS and some band existed, which passed while every
+    # RGB tool wrote its (height, width, 3) output as `height` bands of
+    # `width x 3` pixels -- a raster that opens cleanly and is wrong everywhere.
+    grid = (GLCM_SIZE, GLCM_SIZE) if name == "GLCMCalculator" else (SIZE, SIZE)
+
     with rasterio.open(destination) as source:
         assert source.crs is not None
-        assert source.count >= 1
+        assert (source.height, source.width) == grid, (
+            f"{name} wrote a {source.height}x{source.width} raster "
+            f"({source.count} bands) for a {grid[0]}x{grid[1]} input"
+        )
         assert source.read(1).size > 0
+
+    output = np.asarray(calculator._output)
+    if output.ndim == 3:
+        channels = output.shape[0] if output.shape[1:] == grid else output.shape[2]
+        with rasterio.open(destination) as source:
+            assert source.count == channels, (
+                f"{name}: {channels} channels computed, {source.count} bands written"
+            )
 
 
 # --- The three specific defects from issue #46 --------------------------------

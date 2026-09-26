@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.utils.nodata_handler import apply_nodata, fill_invalid, invalid_mask
 from fezrs.utils.type_handler import BandPathType
 from fezrs.utils.histogram_handler import HistogramExportMixin
 
@@ -31,22 +32,22 @@ class AdaptiveRGBCalculator(BaseTool, HistogramExportMixin):
         pass
 
     def process(self):
+        channels = [self.normalized_bands[band] for band in ("red", "green", "blue")]
+        mask = invalid_mask(*channels)
+
         adaptive_rgb_nstack = np.stack(
             [
                 exposure.equalize_adapthist(
-                    self.normalized_bands["red"], nbins=256, clip_limit=0.08
-                ),
-                exposure.equalize_adapthist(
-                    self.normalized_bands["green"], nbins=256, clip_limit=0.08
-                ),
-                exposure.equalize_adapthist(
-                    self.normalized_bands["blue"], nbins=256, clip_limit=0.08
-                ),
+                    fill_invalid(channel, mask) if mask is not None else channel,
+                    nbins=256,
+                    clip_limit=0.08,
+                )
+                for channel in channels
             ],
             axis=2,
         )
 
-        self._output = adaptive_rgb_nstack
+        self._output = apply_nodata(adaptive_rgb_nstack, mask)
 
         return self._output
 
