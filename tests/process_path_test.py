@@ -13,7 +13,15 @@ import pytest
 rasterio = pytest.importorskip("rasterio")
 from rasterio.transform import from_origin  # noqa: E402
 
-from fezrs import GeoeyeCalculator, NDVICalculator  # noqa: E402
+from fezrs import (  # noqa: E402
+    GaussianCalculator,
+    GeoeyeCalculator,
+    LaplacianCalculator,
+    MeanCalculator,
+    MedianCalculator,
+    NDVICalculator,
+    SobelCalculator,
+)
 from fezrs.tools.glcm.glcm_calculator import (  # noqa: E402
     DEFAULT_LEVELS,
     quantize_to_levels,
@@ -25,7 +33,7 @@ TRANSFORM = from_origin(316725.0, 4176795.0, 30.0, 30.0)
 FILL = -9999
 
 
-def _write(path, array, nodata=None):
+def _write(path, array, nodata=None, interleave="pixel"):
     array = np.asarray(array)
     if array.ndim == 2:
         planes = array[np.newaxis, :, :]
@@ -43,6 +51,7 @@ def _write(path, array, nodata=None):
         crs=CRS,
         transform=TRANSFORM,
         nodata=nodata,
+        interleave=interleave,
     ) as destination:
         destination.write(planes)
     return str(path)
@@ -62,6 +71,62 @@ def test_ndvi_rejects_a_stacked_geotiff_as_a_band(tmp_path):
 
     with pytest.raises(ValueError, match="single-band raster"):
         NDVICalculator(nir_path=stack, red_path=stack)
+
+
+SINGLE_BAND_TIF_TOOLS = [
+    (GaussianCalculator, {}),
+    (MeanCalculator, {}),
+    (MedianCalculator, {"kernel_size": 3}),
+    (SobelCalculator, {"kernel_size": 3}),
+    (LaplacianCalculator, {"kernel_size": 3}),
+]
+
+
+@pytest.mark.parametrize(
+    "tool, kwargs",
+    SINGLE_BAND_TIF_TOOLS,
+    ids=[tool.__name__ for tool, _ in SINGLE_BAND_TIF_TOOLS],
+)
+@pytest.mark.parametrize(
+    "dtype, count, interleave",
+    [
+        # Gaussian and Mean filtered this one per channel and returned it as a
+        # 3-channel "band".
+        ("uint8", 3, "pixel"),
+        # Every filter crashed on this one inside plt.imread with a PIL error.
+        ("int16", 2, "band"),
+    ],
+)
+def test_single_band_tools_reject_a_stacked_tif_path(
+    tmp_path, tool, kwargs, dtype, count, interleave
+):
+    stack = np.stack(
+        [np.arange(20, dtype=dtype).reshape(4, 5) + band for band in range(count)]
+    )
+    path = _write(tmp_path / "stack.tif", stack, interleave=interleave)
+
+    with pytest.raises(ValueError, match="tif_path must be a single-band raster"):
+        tool(tif_path=path, **kwargs).process()
+
+
+@pytest.mark.parametrize("interleave", ["pixel", "band"])
+@pytest.mark.parametrize("count", [2, 6])
+def test_geoeye_selects_the_requested_band_from_any_stack(tmp_path, interleave, count):
+    # A band-interleaved stack reads band-first, so [:, :, level] took a
+    # (bands, height) slice and returned it without complaint. The reviewer's
+    # own recipe on #66 (the bundled profile, count=2) builds exactly this.
+    stack = np.stack(
+        [np.arange(20, dtype=np.int16).reshape(4, 5) * (band + 1) for band in range(count)]
+    )
+    path = _write(tmp_path / "stack.tif", stack, interleave=interleave)
+    level = count - 1
+
+    result = GeoeyeCalculator(tif_path=path, level=level).process()
+
+    # Normalization is min-max over the whole stack.
+    expected = (stack[level] - stack.min()) / (stack.max() - stack.min())
+    assert result.shape == (4, 5)
+    np.testing.assert_allclose(result, expected)
 
 
 def test_ndvi_over_declared_nodata_is_nan(tmp_path):

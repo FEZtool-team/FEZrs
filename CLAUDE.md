@@ -56,7 +56,7 @@ Nearly every calculator re-declares `execute()` with the same signature purely t
 
 ### Band I/O layer
 
-`FileHandler` ([fezrs/utils/file_handler.py](fezrs/utils/file_handler.py)) is the single point where pixels enter the library. It accepts a fixed keyword set — `red_path`, `green_path`, `blue_path`, `nir_path`, `swir1_path`, `swir2_path`, `tif_path`, `tif_paths` (list, for mosaic), plus `before_nir_path` / `before_swir1_path` / `before_swir2_path` for change detection — and eagerly loads every non-`None` path via `skimage.io.imread(...).astype(float)`. A missing path raises `FileNotFoundError` at construction time.
+`FileHandler` ([fezrs/utils/file_handler.py](fezrs/utils/file_handler.py)) is the single point where pixels enter the library. It accepts a fixed keyword set — `red_path`, `green_path`, `blue_path`, `nir_path`, `swir1_path`, `swir2_path`, `tif_path`, `tif_paths` (list, for mosaic), plus `before_nir_path` / `before_swir1_path` / `before_swir2_path` for change detection — and eagerly loads every non-`None` path via `skimage.io.imread(...).astype(float)`. A missing path raises `FileNotFoundError` at construction time. Every band path, `tif_path` included, must be a single band (a stack raises `ValueError` at load); only a tool that sets the class attribute `_multiband_tif = True` (Geoeye) accepts a stacked `tif_path`, loaded as `(height, width, bands)` whatever the file's interleave.
 
 Four accessors, and which one a tool picks matters:
 

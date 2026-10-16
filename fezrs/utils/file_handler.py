@@ -59,6 +59,51 @@ def _as_single_band(
     )
 
 
+def _as_band_last(array: np.ndarray, path: BandPathType) -> np.ndarray:
+    """
+    Put the band axis of a stacked raster last: ``(height, width, bands)``.
+
+    ``skimage.io.imread`` returns a pixel-interleaved stack band-last, but a
+    band-interleaved one band-first. Band-interleaved is what GDAL writes from
+    many profiles, including the bundled example data. Indexing
+    ``[:, :, level]`` on a band-first stack reads the width as the band count
+    and returns a ``(bands, height)`` slice instead of a band, without error.
+
+    On top of that, scikit-image treats any array whose third-from-last axis is
+    3 or 4 long as channel-first RGB and rotates it. A band-interleaved 3- or
+    4-band stack therefore arrives band-last, and a pixel-interleaved stack 3 or
+    4 rows tall arrives as ``(width, bands, height)``.
+
+    The raster's own band count and grid settle which of those it is. If the
+    profile cannot be read, the array is returned unchanged.
+
+    Raises:
+        ValueError: If the shape matches none of the layouts above.
+    """
+    if array.ndim != 3:
+        return array
+
+    try:
+        profile = _raster_profile(str(path))
+    except Exception:
+        return array
+
+    height, width, count = profile["height"], profile["width"], profile["count"]
+    layouts = (
+        ((height, width, count), (0, 1, 2)),
+        ((count, height, width), (1, 2, 0)),
+        ((width, count, height), (2, 0, 1)),
+    )
+    for shape, order in layouts:
+        if array.shape == shape:
+            return np.transpose(array, order)
+
+    raise ValueError(
+        f"Could not tell the band axis of {path}: it has {count} bands of "
+        f"{height} x {width}, but was read with shape {array.shape}."
+    )
+
+
 def _load_image(path: Optional[BandPathType]) -> Optional[np.ndarray]:
     """
     Loads an image from the specified file path if it exists.
@@ -167,7 +212,7 @@ def _raster_profile(path: str) -> Dict:
         path (str): Path to a raster file.
 
     Returns:
-        Dict: CRS, affine transform, nodata value, dtype and shape.
+        Dict: CRS, affine transform, nodata value, dtype, band count and shape.
     """
     with rio.open(path) as source:
         return {
@@ -175,6 +220,7 @@ def _raster_profile(path: str) -> Dict:
             "transform": source.transform,
             "nodata": source.nodata,
             "dtype": source.dtypes[0],
+            "count": source.count,
             "height": source.height,
             "width": source.width,
         }
@@ -223,6 +269,7 @@ class FileHandler:
         before_nir_path: Optional[BandPathType] = None,
         before_swir1_path: Optional[BandPathType] = None,
         before_swir2_path: Optional[BandPathType] = None,
+        multiband_tif: bool = False,
     ):
         """
         Initialize the FileHandler with paths to various image bands.
@@ -239,8 +286,13 @@ class FileHandler:
             before_nir_path (Optional[BandPathType]): Path to the "before" NIR band image.
             before_swir1_path (Optional[BandPathType]): Path to the "before" SWIR1 band image.
             before_swir2_path (Optional[BandPathType]): Path to the "before" SWIR2 band image.
+            multiband_tif (bool): Accept a stacked multi-band raster on
+                ``tif_path``, loaded as ``(height, width, bands)``. Only tools
+                that select a band from a stack (Geoeye) set this; every other
+                path, ``tif_path`` included, must be a single band.
         """
         self.tif_paths = tif_paths
+        self.multiband_tif = multiband_tif
 
         self.band_paths: BandTypes = {
             "tif": tif_path,
@@ -259,12 +311,24 @@ class FileHandler:
             key: _load_image(path) for key, path in self.band_paths.items()
         }
 
-        # Named band paths are one plane. ``tif`` is the exception: Geoeye
-        # (and similar import tools) index a stacked multi-band raster.
+        # Every band path is one plane, ``tif`` included: the filters read it as
+        # a single band, and a stack there either slipped through (a 3-band
+        # uint8 stack came back as a 3-channel "filtered band") or crashed in
+        # plt.imread with a PIL error that said nothing about the input. Only a
+        # tool that selects a band from a stack opts out, and gets it band-last.
         for key, array in self.bands.items():
-            if array is None or key == "tif":
+            if array is None:
                 continue
-            self.bands[key] = _as_single_band(array, key, self.band_paths[key])
+            if self._accepts_stack(key):
+                self.bands[key] = _as_band_last(array, self.band_paths[key])
+            else:
+                self.bands[key] = _as_single_band(
+                    array, key, self.band_paths[key]
+                )
+
+    def _accepts_stack(self, band: str) -> bool:
+        """Whether ``band`` may hold a stacked multi-band raster."""
+        return band == "tif" and self.multiband_tif
 
     def get_normalized_bands(
         self, requested_bands: Optional[List[BandNameType]] = None
@@ -374,18 +438,22 @@ class FileHandler:
             path = self.band_paths.get(band)
             if path and os.path.exists(path):
                 metadata[band] = _metadata_image(path)
-                if band != "tif":
-                    # ``image_plt`` can be RGB even for a single-band TIFF;
-                    # tools compute on ``image_skimage``.
+                # ``image_plt`` can be RGB even for a single-band TIFF;
+                # tools compute on ``image_skimage``.
+                if self._accepts_stack(band):
+                    metadata[band]["image_skimage"] = _as_band_last(
+                        metadata[band]["image_skimage"], path
+                    )
+                else:
                     metadata[band]["image_skimage"] = _as_single_band(
                         metadata[band]["image_skimage"], band, path
                     )
-                    metadata[band]["height"] = int(
-                        metadata[band]["image_skimage"].shape[0]
-                    )
-                    metadata[band]["width"] = int(
-                        metadata[band]["image_skimage"].shape[1]
-                    )
+                metadata[band]["height"] = int(
+                    metadata[band]["image_skimage"].shape[0]
+                )
+                metadata[band]["width"] = int(
+                    metadata[band]["image_skimage"].shape[1]
+                )
 
         return metadata
 
