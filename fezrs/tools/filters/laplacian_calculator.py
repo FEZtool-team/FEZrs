@@ -4,6 +4,7 @@ from cv2 import Laplacian
 
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.utils.nodata_handler import apply_nodata, fill_invalid, invalid_mask
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -51,9 +52,18 @@ class LaplacianCalculator(BaseTool):
             raise ValueError("Invalid 'height' in tif metadata")
 
     def process(self):
-        self._output = Laplacian(
-            self.metadata_bands["tif"]["image_skimage"], -1, ksize=self.kernel_size
-        )
+        image = self.metadata_bands["tif"]["image_skimage"]
+        mask = invalid_mask(image)
+
+        if mask is None:
+            self._output = Laplacian(image, -1, ksize=self.kernel_size)
+        else:
+            self._output = apply_nodata(
+                Laplacian(fill_invalid(image, mask), -1, ksize=self.kernel_size),
+                mask,
+                window=self.kernel_size,
+            )
+
         return self._output
 
     def execute(

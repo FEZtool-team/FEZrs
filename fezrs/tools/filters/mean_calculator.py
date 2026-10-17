@@ -3,6 +3,7 @@ from cv2 import blur
 
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.utils.nodata_handler import apply_nodata, fill_invalid, invalid_mask
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -22,7 +23,19 @@ class MeanCalculator(BaseTool):
         pass
 
     def process(self):
-        self._output = blur(self.metadata_bands["tif"]["image_skimage"], (9, 9))
+        image = self.metadata_bands["tif"]["image_skimage"]
+        mask = invalid_mask(image)
+
+        if mask is None:
+            self._output = blur(image, (9, 9))
+        else:
+            # cv2.blur is a running-sum box filter: once a NaN enters the sum it
+            # never leaves, so everything to the right of the fill in each row
+            # came back NaN. Filter filled data, then mask the 9x9 footprint.
+            self._output = apply_nodata(
+                blur(fill_invalid(image, mask), (9, 9)), mask, window=9
+            )
+
         return self._output
 
     def execute(

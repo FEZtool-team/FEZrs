@@ -1,5 +1,6 @@
 # Import packages and libraries
 from abc import ABC
+from functools import wraps
 
 import numpy as np
 import rasterio as rio
@@ -24,6 +25,10 @@ class BaseTool(ABC):
     Handles band file paths, watermarking, and standardized export of results.
     """
 
+    # Whether ``tif_path`` may be a stacked multi-band raster. Every band path
+    # is a single plane unless the tool selects a band from a stack itself.
+    _multiband_tif: bool = False
+
     def __init__(self, **bands_path: BandPathsType):
         """
         Initializes the BaseTool with band file paths and loads the watermark logo.
@@ -41,7 +46,32 @@ class BaseTool(ABC):
 
         self._logo_watermark = logo_img
 
-        self.files_handler = FileHandler(**bands_path)
+        self.files_handler = FileHandler(
+            **bands_path, multiband_tif=self._multiband_tif
+        )
+
+    def __init_subclass__(cls, **kwargs):
+        """
+        Wrap each subclass ``process()`` so ``_validate()`` always runs.
+
+        ``execute()`` already calls ``_validate()``, but ``process()`` then
+        ``to_raster()`` is a documented second path, and nearly every calculator
+        overrides ``process()`` without calling ``super().process()`` or
+        ``self._validate()``. Wrapping here keeps the two paths equally guarded
+        without a one-line edit in every calculator.
+        """
+        super().__init_subclass__(**kwargs)
+        process = cls.__dict__.get("process")
+        if process is None or getattr(process, "_fezrs_runs_validate", False):
+            return
+
+        @wraps(process)
+        def process_with_validate(self, *args, **kwargs):
+            self._validate()
+            return process(self, *args, **kwargs)
+
+        process_with_validate._fezrs_runs_validate = True
+        cls.process = process_with_validate
 
     def _validate(self):
         """
@@ -55,7 +85,9 @@ class BaseTool(ABC):
         """
         Abstract method for processing data.
 
-        Should be implemented by subclasses to perform the main computation.
+        Subclasses override this with the main computation. ``_validate()`` is
+        invoked automatically before the subclass body runs, including when
+        the caller uses ``process()`` without going through ``execute()``.
         """
         self._validate()
         raise NotImplementedError("Subclasses should implement this method")
@@ -199,9 +231,33 @@ class BaseTool(ABC):
             )
 
         array = np.asarray(self._output)
+        grid = (profile["height"], profile["width"])
+
+        # The source band fixes the grid the output must sit on, which settles
+        # the axis order without guessing. RGB and colour-space tools return
+        # (height, width, channels); writing that as band-first put `height`
+        # bands of `width x channels` pixels at the source transform -- a raster
+        # that opens without complaint and is wrong everywhere.
         if array.ndim == 2:
+            if array.shape != grid:
+                raise ValueError(
+                    f"Output shape {array.shape} does not match the source "
+                    f"raster grid {grid}, so it cannot be written with the "
+                    "source transform."
+                )
             array = array[np.newaxis, :, :]
-        elif array.ndim != 3:
+        elif array.ndim == 3:
+            if array.shape[1:] == grid:
+                pass  # already (bands, height, width)
+            elif array.shape[:2] == grid:
+                array = np.moveaxis(array, -1, 0)
+            else:
+                raise ValueError(
+                    f"Output shape {array.shape} matches the source raster grid "
+                    f"{grid} on neither axis order, so it cannot be written with "
+                    "the source transform."
+                )
+        else:
             raise ValueError(
                 f"Cannot write an array with {array.ndim} dimensions as a raster."
             )

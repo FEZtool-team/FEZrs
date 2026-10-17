@@ -3,6 +3,7 @@ from cv2 import GaussianBlur
 
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.utils.nodata_handler import apply_nodata, fill_invalid, invalid_mask
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -22,9 +23,18 @@ class GaussianCalculator(BaseTool):
         pass
 
     def process(self):
-        self._output = GaussianBlur(
-            self.metadata_bands["tif"]["image_skimage"], (13, 13), 0
-        )
+        image = self.metadata_bands["tif"]["image_skimage"]
+        mask = invalid_mask(image)
+
+        if mask is None:
+            self._output = GaussianBlur(image, (13, 13), 0)
+        else:
+            # Mask the kernel footprint explicitly rather than rely on how
+            # OpenCV happens to propagate NaN through a given filter.
+            self._output = apply_nodata(
+                GaussianBlur(fill_invalid(image, mask), (13, 13), 0), mask, window=13
+            )
+
         return self._output
 
     def execute(
