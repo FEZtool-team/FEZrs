@@ -5,7 +5,7 @@
 
 FEZrs is a Python library developed by [FEZtool](https://github.com/FEZtool-team) for geospatial multispectral image processing and spectral analysis in remote sensing. It provides tools for image processing, feature extraction, spectral analysis, and analysis of geospatial raster data.
 
-## **Features**
+## **Features** 
 
 ✅ Apply various image filtering techniques (Gaussian, Laplacian, Sobel, Median, Mean)  
 ✅ Contrast enhancement and edge detection  
