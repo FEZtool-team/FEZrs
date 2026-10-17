@@ -4,6 +4,7 @@ import numpy as np
 
 from fezrs.utils.file_handler import (
     FileHandler,
+    _as_band_last,
     _as_single_band,
     _load_image,
     _mask_nodata,
@@ -72,7 +73,7 @@ def test_normalize_all_nan_stays_nan():
     assert np.isnan(result).all()
 
 
-def _write_tif(path, array, nodata=None, count=None):
+def _write_tif(path, array, nodata=None, count=None, interleave="pixel"):
     rasterio = pytest.importorskip("rasterio")
     from rasterio.transform import from_origin
 
@@ -96,9 +97,52 @@ def _write_tif(path, array, nodata=None, count=None):
         crs="EPSG:32639",
         transform=from_origin(316725.0, 4176795.0, 30.0, 30.0),
         nodata=nodata,
+        interleave=interleave,
     ) as destination:
         destination.write(planes)
     return str(path)
+
+
+def test_file_handler_rejects_stacked_tif_unless_the_tool_opts_in(tmp_path):
+    stack = np.stack(
+        [
+            np.arange(12, dtype=np.int16).reshape(3, 4),
+            np.arange(12, 24, dtype=np.int16).reshape(3, 4),
+        ]
+    )
+    path = _write_tif(tmp_path / "stack.tif", stack)
+
+    with pytest.raises(ValueError, match="tif_path must be a single-band raster"):
+        FileHandler(tif_path=path)
+
+
+@pytest.mark.parametrize("interleave", ["pixel", "band"])
+@pytest.mark.parametrize("count", [2, 3, 6])
+def test_file_handler_loads_a_multiband_tif_band_last(tmp_path, interleave, count):
+    # scikit-image returns a band-interleaved stack band-first, except at 3 or
+    # 4 bands; the loader has to give one layout whichever it was.
+    stack = np.stack([np.full((3, 4), band, dtype=np.int16) for band in range(count)])
+    path = _write_tif(tmp_path / "stack.tif", stack, interleave=interleave)
+
+    loaded = FileHandler(tif_path=path, multiband_tif=True).bands["tif"]
+
+    assert loaded.shape == (3, 4, count)
+    for band in range(count):
+        np.testing.assert_array_equal(loaded[:, :, band], band)
+
+
+def test_as_band_last_leaves_an_unreadable_source_unchanged():
+    array = np.zeros((2, 3, 4))
+
+    assert _as_band_last(array, "not-a-real-file.tif") is array
+
+
+def test_as_band_last_rejects_a_shape_the_raster_cannot_have(tmp_path):
+    stack = np.zeros((2, 3, 4), dtype=np.int16)
+    path = _write_tif(tmp_path / "stack.tif", stack)
+
+    with pytest.raises(ValueError, match="Could not tell the band axis"):
+        _as_band_last(np.zeros((5, 5, 5)), path)
 
 
 def test_file_handler_rejects_stacked_named_band(tmp_path):

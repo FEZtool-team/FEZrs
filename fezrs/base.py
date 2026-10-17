@@ -25,6 +25,10 @@ class BaseTool(ABC):
     Handles band file paths, watermarking, and standardized export of results.
     """
 
+    # Whether ``tif_path`` may be a stacked multi-band raster. Every band path
+    # is a single plane unless the tool selects a band from a stack itself.
+    _multiband_tif: bool = False
+
     def __init__(self, **bands_path: BandPathsType):
         """
         Initializes the BaseTool with band file paths and loads the watermark logo.
@@ -42,7 +46,9 @@ class BaseTool(ABC):
 
         self._logo_watermark = logo_img
 
-        self.files_handler = FileHandler(**bands_path)
+        self.files_handler = FileHandler(
+            **bands_path, multiband_tif=self._multiband_tif
+        )
 
     def __init_subclass__(cls, **kwargs):
         """

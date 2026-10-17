@@ -3,6 +3,9 @@ from fezrs.utils.type_handler import BandPathType
 
 
 class Geoeye_Calculator(BaseTool):
+    # Reads one band out of a stacked raster, so it is the tool that takes one.
+    _multiband_tif = True
+
     def __init__(self, tif_path: BandPathType, level: int = 0):
         super().__init__(
             tif_path=tif_path,
