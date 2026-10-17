@@ -5,6 +5,7 @@ from typing import Literal
 
 # Import module and files
 from fezrs.base import BaseTool, BandPathType
+from fezrs.utils.nodata_handler import apply_nodata, fill_invalid, invalid_mask
 
 IRHSVChannel = Literal[
     "irhsv",
@@ -43,7 +44,13 @@ class IRHSVCalculator(BaseTool):
             self.normalized_bands[band] for band in ("red", "swir1", "swir2")
         )
 
-        hsv_calculated = rgb2hsv(np.dstack((swir2, swir1, red)))
+        composite = np.dstack((swir2, swir1, red))
+        mask = invalid_mask(composite)
+        # rgb2hsv turns NaN into ordinary-looking hue and saturation values.
+        hsv_calculated = apply_nodata(
+            rgb2hsv(fill_invalid(composite, mask) if mask is not None else composite),
+            mask,
+        )
 
         channels = {
             "irhsv": hsv_calculated,

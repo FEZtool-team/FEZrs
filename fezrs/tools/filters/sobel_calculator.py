@@ -1,9 +1,10 @@
 # Import packages and libraries
 import numpy as np
-from cv2 import Sobel
+from cv2 import CV_64F, Sobel
 
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.utils.nodata_handler import apply_nodata, fill_invalid, invalid_mask
 from fezrs.utils.type_handler import BandPathType
 
 
@@ -51,13 +52,24 @@ class SobelCalculator(BaseTool):
             raise ValueError("Invalid 'height' in tif metadata")
 
     def process(self):
-        self._output = Sobel(
-            self.metadata_bands["tif"]["image_skimage"],
-            0,
+        image = self.metadata_bands["tif"]["image_skimage"]
+        mask = invalid_mask(image)
+        source = fill_invalid(image, mask) if mask is not None else image
+
+        # The output depth was 0, which OpenCV reads as CV_8U rather than "same
+        # as the input". On 16-bit imagery that clipped every negative gradient
+        # to 0 and saturated the rest at 255 -- 44% and 41% of pixels on a
+        # synthetic 16-bit scene -- so the edge map lost its sign and almost all
+        # of its dynamic range. A gradient is signed and unbounded; keep it so.
+        gradient = Sobel(
+            np.asarray(source, dtype=np.float64),
+            CV_64F,
             dx=1,
             dy=1,
             ksize=self.kernel_size,
         )
+
+        self._output = apply_nodata(gradient, mask, window=self.kernel_size)
         return self._output
 
     def execute(

@@ -61,6 +61,16 @@ def test_validate_with_invalid_level_too_high(mock_geoeye_calculator):
         mock_geoeye_calculator._validate()
 
 
+def test_process_rejects_single_band_raster(mock_geoeye_calculator):
+    """Issue #66: the #46 guard must fire on process(), not only execute()."""
+    mock_geoeye_calculator.tif_normalized = {"tif": np.random.rand(10, 10)}
+    mock_geoeye_calculator.files_handler.band_paths = {"tif": "nir.tif"}
+    mock_geoeye_calculator.level = 0
+
+    with pytest.raises(ValueError, match="multi-band raster"):
+        mock_geoeye_calculator.process()
+
+
 def test_process_selects_correct_band(mock_geoeye_calculator):
     mock_geoeye_calculator.tif_normalized = {"tif": np.random.rand(10, 10, 5)}
     mock_geoeye_calculator.level = 2

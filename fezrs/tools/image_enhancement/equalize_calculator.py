@@ -4,6 +4,7 @@ from skimage import exposure, img_as_float
 
 # Import module and files
 from fezrs.base import BaseTool
+from fezrs.utils.nodata_handler import apply_nodata, fill_invalid, invalid_mask
 from fezrs.utils.type_handler import BandPathType
 from fezrs.utils.histogram_handler import HistogramExportMixin
 
@@ -19,11 +20,17 @@ class EqualizeCalculator(BaseTool, HistogramExportMixin):
         pass
 
     def process(self):
-        self._output = exposure.equalize_hist(
-            img_as_float(self.metadata_bands["nir"]["image_skimage"]),
-            nbins=256,
-            mask=None,
-        )
+        image = img_as_float(self.metadata_bands["nir"]["image_skimage"])
+        mask = invalid_mask(image)
+
+        if mask is None:
+            self._output = exposure.equalize_hist(image, nbins=256, mask=None)
+        else:
+            # Build the histogram from valid pixels only; NaN cannot be binned.
+            equalized = exposure.equalize_hist(
+                fill_invalid(image, mask), nbins=256, mask=~mask
+            )
+            self._output = apply_nodata(equalized, mask)
 
         return self._output
 

@@ -180,8 +180,6 @@ class PCACalculator(BaseTool, HistogramExportMixin):
             (6, height, width)
         """
 
-        self._validate()
-
         images_collection = self.files_handler.get_images_collection()
 
         if len(images_collection) != 6:
