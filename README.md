@@ -3,7 +3,9 @@
 [![DOI](https://zenodo.org/badge/710286874.svg)](https://doi.org/10.5281/zenodo.14938038) [![Tests](https://github.com/FEZtool-team/FEZrs/actions/workflows/FEZrs_Tests.yml/badge.svg?branch=main)](https://github.com/FEZtool-team/FEZrs/actions/workflows/FEZrs_Tests.yml) [![Documentation](https://img.shields.io/website?url=https%3A%2F%2Ffeztool-team.github.io%2FFEZdocs%2Flibraries%2Ffezrs%2F&label=docs)](https://feztool-team.github.io/FEZdocs/libraries/fezrs/) [![Downloads/month](https://static.pepy.tech/badge/fezrs/month)](https://pepy.tech/project/fezrs) [![PyPI version](https://img.shields.io/pypi/v/fezrs.svg)](https://pypi.org/project/fezrs/)
 [![Conda Version](https://img.shields.io/conda/vn/FEZtool/fezrs?label=Anaconda&color=orange&logo=anaconda)](https://anaconda.org/FEZtool/fezrs) ![License](https://img.shields.io/pypi/l/FEZrs) [![PyPI Downloads](https://static.pepy.tech/badge/fezrs)](https://pepy.tech/projects/fezrs) ![GitHub last commit](https://img.shields.io/github/last-commit/FEZtool-team/fezrs) [![Platform](https://img.shields.io/conda/pn/feztool/fezrs?color=blue&label=Platform&style=flat)](https://anaconda.org/feztool/fezrs) ![GitHub stars](https://img.shields.io/github/stars/FEZtool-team/FEZrs?style=social)
 
-FEZrs is a Python library developed by [FEZtool](https://github.com/FEZtool-team) for geospatial multispectral image processing and spectral analysis in remote sensing. It provides tools for image processing, feature extraction, spectral analysis, and analysis of geospatial raster data.
+FEZrs is a Python library developed by [FEZtool](https://feztool.com/) for geospatial multispectral image processing and spectral analysis in remote sensing. It provides tools for image processing, feature extraction, spectral analysis, and analysis of geospatial raster data.
+
+Project page: https://feztool.com/fezrs/
 
 ## **Features** 
 
@@ -107,6 +109,26 @@ We welcome contributions! To contribute:
 3. Commit your changes (`git commit -m "Add new feature"`)
 4. Push to your branch (`git push origin feature-name`)
 5. Open a Pull Request
+
+## **Citation**
+
+If you use FEZrs in your work, please cite it with its Zenodo DOI, [10.5281/zenodo.14938038](https://doi.org/10.5281/zenodo.14938038). This concept DOI always resolves to the latest release.
+
+```bibtex
+@software{fezrs,
+  author    = {Farmahinifarahani, Mahdi and Elmi, Parsa and Nedaee, Mehdi and
+               Kiani faizabadi, Mohammad and Mirzaee, Hooman and Moradi, Parsa and
+               Yazdanifar, Mohammadhossein and Khosravani, Fariba and Najafi, Fatemeh and
+               Talkhablou, Mehdi},
+  title     = {{FEZrs}: An Open-Source Python Package for Geospatial Multispectral
+               Image Processing and Remote Sensing},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.14938038},
+  url       = {https://doi.org/10.5281/zenodo.14938038}
+}
+```
+
+On GitHub, the **Cite this repository** button gives a ready-made reference in APA and BibTeX, from [`CITATION.cff`](https://github.com/FEZtool-team/FEZrs/blob/main/CITATION.cff). A paper on FEZrs is under review at the Journal of Open Source Software ([openjournals/joss-reviews#11016](https://github.com/openjournals/joss-reviews/issues/11016)); this section will add it once it is published.
 
 ## **Acknowledgment**
 
