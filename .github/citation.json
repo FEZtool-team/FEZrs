@@ -4,43 +4,85 @@
   "authors": [
     {
       "given-names": "Mahdi",
-      "family-names": "Farmahinifarahani"
+      "family-names": "Farmahinifarahani",
+      "orcid": "https://orcid.org/0009-0008-3800-8688",
+      "affiliation": "Department of Earth and Environmental Science, The Chinese University of Hong Kong, Hong Kong SAR"
     },
     {
       "given-names": "Parsa",
-      "family-names": "Elmi"
+      "family-names": "Elmi",
+      "orcid": "https://orcid.org/0009-0005-2751-4161",
+      "affiliation": "Faculty of Management, Islamic Azad University, Central Tehran Branch, Tehran, Iran"
     },
     {
       "given-names": "Mehdi",
-      "family-names": "Nedaee"
+      "family-names": "Nedaee",
+      "orcid": "https://orcid.org/0009-0001-0357-6019",
+      "affiliation": "Department of Software Engineering, Shamsipour Technical College, Tehran, Iran"
     },
     {
       "given-names": "Mohammad",
-      "family-names": "Kiani faizabadi"
+      "family-names": "Kiani faizabadi",
+      "orcid": "https://orcid.org/0009-0001-3867-2107",
+      "affiliation": "Faculty of Computer Science, Islamic Azad University, Central Tehran Branch, Tehran, Iran"
     },
     {
       "given-names": "Hooman",
-      "family-names": "Mirzaee"
+      "family-names": "Mirzaee",
+      "orcid": "https://orcid.org/0009-0004-4289-5989",
+      "affiliation": "Faculty of Computer Science, Islamic Azad University, Central Tehran Branch, Tehran, Iran"
     },
     {
       "given-names": "Parsa",
-      "family-names": "Moradi"
+      "family-names": "Moradi",
+      "orcid": "https://orcid.org/0009-0000-2008-123X",
+      "affiliation": "Department of Software Engineering, Shamsipour Technical College, Tehran, Iran"
     },
     {
       "given-names": "Mohammadhossein",
-      "family-names": "Yazdanifar"
+      "family-names": "Yazdanifar",
+      "orcid": "https://orcid.org/0009-0009-3929-103X",
+      "affiliation": "Department of Industrial Engineering, Sharif University of Technology, Tehran, Iran"
     },
     {
       "given-names": "Fariba",
-      "family-names": "Khosravani"
+      "family-names": "Khosravani",
+      "orcid": "https://orcid.org/0009-0007-3223-8506",
+      "affiliation": "Faculty of Earth Sciences, Kharazmi University, Tehran, Iran"
     },
     {
       "given-names": "Fatemeh",
-      "family-names": "Najafi"
+      "family-names": "Najafi",
+      "orcid": "https://orcid.org/0009-0009-1541-2618",
+      "affiliation": "Faculty of Earth Sciences, Kharazmi University, Tehran, Iran"
     },
     {
       "given-names": "Mehdi",
-      "family-names": "Talkhablou"
+      "family-names": "Talkhablou",
+      "orcid": "https://orcid.org/0009-0007-7657-7008",
+      "affiliation": "Faculty of Earth Sciences, Kharazmi University, Tehran, Iran"
     }
+  ],
+  "doi": "10.5281/zenodo.14938038",
+  "url": "https://feztool.com/fezrs/",
+  "repository-code": "https://github.com/FEZtool-team/FEZrs",
+  "license": "Apache-2.0",
+  "abstract": "FEZrs is an open-source Python package for geospatial multispectral image processing and remote sensing. It puts thirty-seven operations (spectral indices, filters, image enhancement, GLCM texture, PCA, K-Means clustering, change detection and SVM classification) behind one three-line calling pattern. Each calculator can save a figure with execute() and a georeferenced GeoTIFF with to_raster().",
+  "keywords": [
+    "remote sensing",
+    "geospatial",
+    "multispectral",
+    "satellite imagery",
+    "image processing",
+    "spectral indices",
+    "NDVI",
+    "change detection",
+    "feature extraction",
+    "GLCM",
+    "PCA",
+    "classification",
+    "GeoTIFF",
+    "Landsat",
+    "earth science"
   ]
 }

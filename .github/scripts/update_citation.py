@@ -15,6 +15,10 @@ DEFAULT_CITATION_FILE = ROOT / "CITATION.cff"
 DEFAULT_BUMPVERSION_FILE = ROOT / ".bumpversion.cfg"
 DEFAULT_SETUP_FILE = ROOT / "setup.py"
 
+# Optional keys, emitted in this order when citation.json defines them.
+AUTHOR_FIELDS = ("orcid", "affiliation")
+SCALAR_FIELDS = ("doi", "url", "repository-code", "license", "abstract")
+
 
 def read_version(path: Path) -> str:
     config = ConfigParser()
@@ -46,6 +50,15 @@ def read_citation_config(path: Path) -> dict[str, Any]:
             raise ValueError("each author entry must be an object")
         if not author.get("given-names") or not author.get("family-names"):
             raise ValueError("each author must define given-names and family-names")
+        orcid = author.get("orcid")
+        if orcid is not None and not str(orcid).startswith("https://orcid.org/"):
+            raise ValueError("author orcid must be a https://orcid.org/ URL")
+
+    keywords = citation_config.get("keywords")
+    if keywords is not None and (
+        not isinstance(keywords, list) or not all(isinstance(k, str) for k in keywords)
+    ):
+        raise ValueError("keywords must be a list of strings")
 
     return citation_config
 
@@ -90,6 +103,9 @@ def render_citation(
                 f"    given-names: {quote_cff(str(author['given-names']))}",
             ]
         )
+        for field in AUTHOR_FIELDS:
+            if author.get(field):
+                lines.append(f"    {field}: {quote_cff(str(author[field]))}")
 
     lines.extend(
         [
@@ -97,9 +113,15 @@ def render_citation(
             f"title: {quote_cff(f'{title}: Version {version}')}",
             f"version: {quote_cff(version)}",
             f"date-released: {quote_cff(release_date.isoformat())}",
-            "",
         ]
     )
+    for field in SCALAR_FIELDS:
+        if citation_config.get(field):
+            lines.append(f"{field}: {quote_cff(str(citation_config[field]))}")
+    if citation_config.get("keywords"):
+        lines.append("keywords:")
+        lines.extend(f"  - {quote_cff(keyword)}" for keyword in citation_config["keywords"])
+    lines.append("")
     return "\n".join(lines)
 
 
