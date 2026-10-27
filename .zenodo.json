@@ -1,0 +1,87 @@
+{
+  "upload_type": "software",
+  "title": "FEZrs: An Open-Source Python Package for Geospatial Multispectral Image Processing and Remote Sensing",
+  "description": "<p>FEZrs is an open-source Python package for geospatial multispectral image processing and remote sensing. It puts thirty-seven operations (spectral indices, filters, image enhancement, GLCM texture, PCA, K-Means clustering, change detection and SVM classification) behind one three-line calling pattern. Each calculator can save a figure with execute() and a georeferenced GeoTIFF with to_raster().</p><p>Install with <code>pip install fezrs</code> or <code>conda install -c FEZtool fezrs</code>. Documentation: <a href=\"https://feztool-team.github.io/FEZdocs/libraries/fezrs/\">FEZdocs</a>. Project page: <a href=\"https://feztool.com/fezrs/\">feztool.com/fezrs</a>.</p>",
+  "creators": [
+    {
+      "name": "Farmahinifarahani, Mahdi",
+      "orcid": "0009-0008-3800-8688",
+      "affiliation": "Department of Earth and Environmental Science, The Chinese University of Hong Kong, Hong Kong SAR"
+    },
+    {
+      "name": "Elmi, Parsa",
+      "orcid": "0009-0005-2751-4161",
+      "affiliation": "Faculty of Management, Islamic Azad University, Central Tehran Branch, Tehran, Iran"
+    },
+    {
+      "name": "Nedaee, Mehdi",
+      "orcid": "0009-0001-0357-6019",
+      "affiliation": "Department of Software Engineering, Shamsipour Technical College, Tehran, Iran"
+    },
+    {
+      "name": "Kiani faizabadi, Mohammad",
+      "orcid": "0009-0001-3867-2107",
+      "affiliation": "Faculty of Computer Science, Islamic Azad University, Central Tehran Branch, Tehran, Iran"
+    },
+    {
+      "name": "Mirzaee, Hooman",
+      "orcid": "0009-0004-4289-5989",
+      "affiliation": "Faculty of Computer Science, Islamic Azad University, Central Tehran Branch, Tehran, Iran"
+    },
+    {
+      "name": "Moradi, Parsa",
+      "orcid": "0009-0000-2008-123X",
+      "affiliation": "Department of Software Engineering, Shamsipour Technical College, Tehran, Iran"
+    },
+    {
+      "name": "Yazdanifar, Mohammadhossein",
+      "orcid": "0009-0009-3929-103X",
+      "affiliation": "Department of Industrial Engineering, Sharif University of Technology, Tehran, Iran"
+    },
+    {
+      "name": "Khosravani, Fariba",
+      "orcid": "0009-0007-3223-8506",
+      "affiliation": "Faculty of Earth Sciences, Kharazmi University, Tehran, Iran"
+    },
+    {
+      "name": "Najafi, Fatemeh",
+      "orcid": "0009-0009-1541-2618",
+      "affiliation": "Faculty of Earth Sciences, Kharazmi University, Tehran, Iran"
+    },
+    {
+      "name": "Talkhablou, Mehdi",
+      "orcid": "0009-0007-7657-7008",
+      "affiliation": "Faculty of Earth Sciences, Kharazmi University, Tehran, Iran"
+    }
+  ],
+  "license": "Apache-2.0",
+  "access_right": "open",
+  "keywords": [
+    "remote sensing",
+    "geospatial",
+    "multispectral",
+    "satellite imagery",
+    "image processing",
+    "spectral indices",
+    "NDVI",
+    "change detection",
+    "feature extraction",
+    "GLCM",
+    "PCA",
+    "classification",
+    "GeoTIFF",
+    "Landsat",
+    "earth science"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://feztool-team.github.io/FEZdocs/libraries/fezrs/",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-softwaredocumentation"
+    },
+    {
+      "identifier": "https://feztool.com/fezrs/",
+      "relation": "isDescribedBy"
+    }
+  ]
+}
