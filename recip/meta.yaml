@@ -41,10 +41,13 @@ requirements:
   # skip tests temporarily because of missing libEGL dependency
 
 about:
-  home: https://github.com/FEZtool-team/FEZrs
-  license: Apache
+  home: https://feztool.com/fezrs/
+  doc_url: https://feztool-team.github.io/FEZdocs/libraries/fezrs/
+  dev_url: https://github.com/FEZtool-team/FEZrs
+  license: Apache-2.0
+  license_family: Apache
   license_file: LICENSE
-  summary: "FEZrs is a Python package for feature extraction and analysis in remote sensing imagery."
+  summary: "Open-source Python package for geospatial multispectral image processing and remote sensing: spectral indices, filters, image enhancement, change detection and classification."
 
 extra:
   recipe-maintainers:
